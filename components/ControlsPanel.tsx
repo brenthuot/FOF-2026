@@ -51,13 +51,13 @@ function Toggle({ label, value, onChange, desc }: {
       </div>
       <button
         onClick={() => onChange(!value)}
-        className={`flex-shrink-0 w-10 h-5 rounded-full transition-colors relative mt-0.5 ${
+        className={`flex-shrink-0 w-9 h-5 rounded-full transition-colors relative mt-0.5 ${
           value ? 'bg-blue-500' : 'bg-slate-700'
         }`}
       >
         <span
           className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-            value ? 'translate-x-5' : 'translate-x-0.5'
+            value ? 'translate-x-4' : 'translate-x-0.5'
           }`}
         />
       </button>
@@ -65,7 +65,6 @@ function Toggle({ label, value, onChange, desc }: {
   )
 }
 
-// ── Diagnostic health badge ──────────────────────────────────────────────────
 type Health = 'ok' | 'warn' | 'bad'
 function statusBadge(v: number, lo: number, hi: number): Health {
   if (v >= lo && v <= hi) return 'ok'
@@ -91,7 +90,6 @@ export default function ControlsPanel({ settings, onChange, diagnostics }: Props
 
   return (
     <div className="p-4 space-y-5 text-sm">
-      {/* Header */}
       <div>
         <div className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-1">
           Model Controls
@@ -101,7 +99,6 @@ export default function ControlsPanel({ settings, onChange, diagnostics }: Props
         </p>
       </div>
 
-      {/* Live diagnostics mini-panel */}
       <div className="bg-slate-800/50 rounded-lg p-3 space-y-2">
         <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Live diagnostics</div>
         {([
@@ -122,7 +119,6 @@ export default function ControlsPanel({ settings, onChange, diagnostics }: Props
         ))}
       </div>
 
-      {/* ── Weights ── */}
       <section className="space-y-4">
         <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">Weights</div>
         <Slider
@@ -148,7 +144,6 @@ export default function ControlsPanel({ settings, onChange, diagnostics }: Props
         </p>
       </section>
 
-      {/* ── Optional layers ── */}
       <section className="space-y-3">
         <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">Adjustments</div>
         <Toggle
@@ -181,7 +176,6 @@ export default function ControlsPanel({ settings, onChange, diagnostics }: Props
         )}
       </section>
 
-      {/* ── Tier detection ── */}
       <section className="space-y-3">
         <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">Tiers</div>
         <Slider
@@ -195,7 +189,6 @@ export default function ControlsPanel({ settings, onChange, diagnostics }: Props
         </div>
       </section>
 
-      {/* Reset */}
       <button
         onClick={() => onChange(DEFAULT_SETTINGS)}
         className="w-full py-2 rounded-lg text-xs font-medium text-slate-400 border border-slate-700
@@ -204,7 +197,6 @@ export default function ControlsPanel({ settings, onChange, diagnostics }: Props
         Reset to defaults
       </button>
 
-      {/* Methodology note */}
       <div className="bg-slate-800/30 rounded-lg p-3 text-[10px] text-slate-600 space-y-1 leading-relaxed">
         <div className="text-slate-500 font-semibold">Methodology</div>
         <div>BLND → separate H/P normalization → weights → pitcher compression → optional replacement layer → optional SB scarcity → tier detection</div>
