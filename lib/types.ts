@@ -52,13 +52,13 @@ export interface ModelSettings {
 }
 
 export const DEFAULT_SETTINGS: ModelSettings = {
-  hitterWeight:        0.55,   // 55/45 split — puts top SPs at ranks 14-18
-  pitcherCompression:  0.95,   // slight compression prevents pitcher streaks
+  hitterWeight:        0.58,   // 58/42 — keeps 5 P in top 20 while reducing top 100 crowding
+  pitcherCompression:  1.02,   // slightly above 1.0 compresses mid-tier SP cluster
   replacementOn:       true,
   replacementStrength: 1.0,
   sbScarcityOn:        true,
   sbStrength:          1.0,
-  tierGapThreshold:    0.12,
+  tierGapThreshold:    0.035,
 }
 
 // Re-export Diagnostics type so components can import from one place
