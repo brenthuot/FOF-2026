@@ -10,10 +10,12 @@ interface Props {
   ranked: ScoredPlayer[]
   onSelect: (p: ScoredPlayer) => void
   onToggleDraft: (id: string) => void
+  onToggleMyRoster: (id: string) => void
   draftedIds: Set<string>
+  myRosterIds: Set<string>
 }
 
-export default function DraftBoard({ ranked, onSelect, onToggleDraft, draftedIds }: Props) {
+export default function DraftBoard({ ranked, onSelect, onToggleDraft, onToggleMyRoster, draftedIds, myRosterIds }: Props) {
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState<FilterType>('ALL')
   const [filterPos, setFilterPos] = useState('ALL')
@@ -162,7 +164,7 @@ export default function DraftBoard({ ranked, onSelect, onToggleDraft, draftedIds
               <th className="text-right px-2 py-2 text-red-700">WHIP</th>
               <th className="text-right px-2 py-2 text-red-700">SV</th>
               {/* Draft */}
-              <th className="text-center px-2 py-2 w-10"></th>
+              <th className="text-center px-2 py-2 w-16">M / D</th>
             </tr>
           </thead>
           <tbody>
@@ -228,16 +230,30 @@ export default function DraftBoard({ ranked, onSelect, onToggleDraft, draftedIds
                     <td className="px-2 py-2 text-right text-slate-500 font-mono">{fmt(p.stats.era, 2)}</td>
                     <td className="px-2 py-2 text-right text-slate-500 font-mono">{fmt(p.stats.whip, 2)}</td>
                     <td className="px-2 py-2 text-right text-slate-500 font-mono">{fmt(p.stats.sv)}</td>
-                    {/* Draft toggle */}
-                    <td className="px-2 py-2 text-center" onClick={e => { e.stopPropagation(); onToggleDraft(p.id) }}>
-                      <button
-                        className={`w-5 h-5 rounded-full border transition-colors ${
-                          isDrafted
-                            ? 'bg-amber-500 border-amber-400'
-                            : 'border-slate-600 hover:border-amber-500 hover:bg-amber-500/20'
-                        }`}
-                        title={isDrafted ? 'Mark undrafted' : 'Mark drafted'}
-                      />
+                    {/* Two action buttons */}
+                    <td className="px-2 py-2 text-center" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center gap-1 justify-center">
+                        {/* My pick (blue) */}
+                        <button
+                          onClick={() => onToggleMyRoster(p.id)}
+                          title="Add to my team"
+                          className={`w-5 h-5 rounded-full border text-[9px] font-bold transition-colors ${
+                            myRosterIds.has(p.id)
+                              ? 'bg-blue-500 border-blue-400 text-white'
+                              : 'border-blue-700 text-blue-700 hover:bg-blue-500 hover:border-blue-400 hover:text-white'
+                          }`}
+                        >M</button>
+                        {/* Drafted off board (amber) */}
+                        <button
+                          onClick={() => onToggleDraft(p.id)}
+                          title="Mark as drafted (off board)"
+                          className={`w-5 h-5 rounded-full border text-[9px] font-bold transition-colors ${
+                            isDrafted && !myRosterIds.has(p.id)
+                              ? 'bg-amber-500 border-amber-400 text-white'
+                              : 'border-slate-600 text-slate-600 hover:bg-amber-500 hover:border-amber-400 hover:text-white'
+                          }`}
+                        >D</button>
+                      </div>
                     </td>
                   </tr>
                 </>
