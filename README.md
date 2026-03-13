@@ -12,7 +12,7 @@ Rankings are layered **on top** of BLND — the source formulas are never modifi
 npm install
 
 # 2. Run dev server
-npm run dev
+npm run dev  
 
 # 3. Open http://localhost:3000
 ```
