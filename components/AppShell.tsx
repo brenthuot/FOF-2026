@@ -14,25 +14,25 @@ import TeamTracker from './TeamTracker'
 type Tab = 'draft' | 'team' | 'pool' | 'diagnostics' | 'edges'
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'draft',       label: 'Draft Board',  icon: '🎯' },
-  { id: 'team',        label: 'My Team',      icon: '⚾' },
-  { id: 'pool',        label: 'Full Pool',    icon: '📋' },
-  { id: 'diagnostics', label: 'Diagnostics',  icon: '🔬' },
-  { id: 'edges',       label: 'ESPN Edges',   icon: '📊' },
+  { id: 'draft',       label: 'Draft Board', icon: '🎯' },
+  { id: 'team',        label: 'My Team',     icon: '⚾' },
+  { id: 'pool',        label: 'Full Pool',   icon: '📋' },
+  { id: 'diagnostics', label: 'Diagnostics', icon: '🔬' },
+  { id: 'edges',       label: 'ESPN Edges',  icon: '📊' },
 ]
 
 export default function AppShell({ players, meta }: { players: RawPlayer[]; meta: DataMeta }) {
-  const [settings, setSettings] = useState<ModelSettings>(DEFAULT_SETTINGS)
-  const [activeTab, setActiveTab] = useState<Tab>('draft')
-  const [draftedIds, setDraftedIds] = useState<Set<string>>(new Set())
+  const [settings, setSettings]             = useState<ModelSettings>(DEFAULT_SETTINGS)
+  const [activeTab, setActiveTab]           = useState<Tab>('draft')
   const [selectedPlayer, setSelectedPlayer] = useState<ScoredPlayer | null>(null)
-  const [controlsOpen, setControlsOpen] = useState(true)
+  const [controlsOpen, setControlsOpen]     = useState(true)
+  const [draftedIds, setDraftedIds]         = useState<Set<string>>(new Set())
+  const [myRosterIds, setMyRosterIds]       = useState<Set<string>>(new Set())
 
   const ranked = useMemo(
     () => computeRankings(players, meta, settings, draftedIds),
     [players, meta, settings, draftedIds],
   )
-
   const diagnostics = useMemo(() => computeDiagnostics(ranked), [ranked])
 
   const toggleDrafted = useCallback((id: string) => {
@@ -43,104 +43,86 @@ export default function AppShell({ players, meta }: { players: RawPlayer[]; meta
     })
   }, [])
 
-  const draftedCount = draftedIds.size
+  const toggleMyRoster = useCallback((id: string) => {
+    setMyRosterIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+        setDraftedIds(d => new Set([...d, id]))
+      }
+      return next
+    })
+  }, [])
+
+  const draftedCount  = draftedIds.size
+  const myRosterCount = myRosterIds.size
+  const myTeam = useMemo(() => ranked.filter(p => myRosterIds.has(p.id)), [ranked, myRosterIds])
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#0a1628]">
-      {/* ── Sidebar: controls ── */}
-      <aside
-        className={`flex-shrink-0 border-r border-slate-700/50 bg-[#0f1b2d] overflow-y-auto transition-all duration-200 ${
-          controlsOpen ? 'w-72' : 'w-0 border-none overflow-hidden'
-        }`}
-      >
-        <ControlsPanel
-          settings={settings}
-          onChange={setSettings}
-          diagnostics={diagnostics}
-        />
+      <aside className={`flex-shrink-0 border-r border-slate-700/50 bg-[#0f1b2d] overflow-y-auto transition-all duration-200 ${controlsOpen ? 'w-72' : 'w-0 border-none overflow-hidden'}`}>
+        <ControlsPanel settings={settings} onChange={setSettings} diagnostics={diagnostics} />
       </aside>
 
-      {/* ── Main content ── */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        {/* Top nav */}
         <header className="flex-shrink-0 flex items-center gap-3 px-4 py-2.5 border-b border-slate-700/50 bg-[#0f1b2d]">
-          {/* Toggle sidebar */}
-          <button
-            onClick={() => setControlsOpen(o => !o)}
-            className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
-            title="Toggle controls"
-          >
+          <button onClick={() => setControlsOpen(o => !o)}
+            className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16"/>
             </svg>
           </button>
-
-          {/* Logo */}
           <div className="flex items-center gap-2 mr-2">
             <span className="text-lg">⚾</span>
-            <span className="font-semibold text-white text-sm tracking-wide">
-              Draft 2026
-            </span>
+            <span className="font-semibold text-white text-sm tracking-wide">Draft 2026</span>
             <span className="text-xs text-slate-500 font-mono">H2H · 10-Team · BLND</span>
           </div>
-
-          {/* Tabs */}
           <nav className="flex gap-0.5 ml-auto">
             {TABS.map(t => (
-              <button
-                key={t.id}
-                onClick={() => setActiveTab(t.id)}
-                className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                  activeTab === t.id
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-700'
-                }`}
-              >
+              <button key={t.id} onClick={() => setActiveTab(t.id)}
+                className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${activeTab === t.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}>
                 {t.icon} {t.label}
+                {t.id === 'team' && myRosterCount > 0 && (
+                  <span className="ml-1 bg-blue-500 text-white rounded-full px-1.5 py-0.5 text-[10px]">{myRosterCount}</span>
+                )}
               </button>
             ))}
           </nav>
-
-          {/* Draft counter */}
-          {draftedCount > 0 && (
-            <div className="ml-2 flex items-center gap-2 bg-slate-800 rounded px-2 py-1 text-xs text-slate-300">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              {draftedCount} drafted
-              <button
-                onClick={() => setDraftedIds(new Set())}
-                className="text-slate-500 hover:text-white ml-1"
-              >
-                ✕
-              </button>
-            </div>
-          )}
+          <div className="flex items-center gap-2 ml-2">
+            {myRosterCount > 0 && (
+              <div className="flex items-center gap-1.5 bg-blue-900/40 border border-blue-700 rounded px-2 py-1 text-xs text-blue-300">
+                <span className="w-2 h-2 rounded-full bg-blue-400" />
+                {myRosterCount} my picks
+                <button onClick={() => setMyRosterIds(new Set())} className="text-blue-600 hover:text-white ml-0.5">✕</button>
+              </div>
+            )}
+            {draftedCount > 0 && (
+              <div className="flex items-center gap-1.5 bg-slate-800 rounded px-2 py-1 text-xs text-slate-400">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                {draftedCount} off board
+                <button onClick={() => { setDraftedIds(new Set()); setMyRosterIds(new Set()) }}
+                  className="text-slate-600 hover:text-white ml-0.5">✕</button>
+              </div>
+            )}
+          </div>
         </header>
 
-        {/* View */}
         <main className="flex-1 overflow-hidden">
           {activeTab === 'draft' && (
-            <DraftBoard
-              ranked={ranked}
-              onSelect={setSelectedPlayer}
-              onToggleDraft={toggleDrafted}
-              draftedIds={draftedIds}
-            />
-          )}
-          {activeTab === 'pool' && (
-            <FullPool
-              ranked={ranked}
-              onSelect={setSelectedPlayer}
-              onToggleDraft={toggleDrafted}
-              draftedIds={draftedIds}
-            />
+            <DraftBoard ranked={ranked} onSelect={setSelectedPlayer}
+              onToggleDraft={toggleDrafted} onToggleMyRoster={toggleMyRoster}
+              draftedIds={draftedIds} myRosterIds={myRosterIds} />
           )}
           {activeTab === 'team' && (
-            <TeamTracker
-              myTeam={ranked.filter(p => p.drafted)}
-              ranked={ranked}
-              onSelect={setSelectedPlayer}
-              draftPick={draftedCount + 1}
-            />
+            <TeamTracker myTeam={myTeam} ranked={ranked} onSelect={setSelectedPlayer}
+              onToggleMyRoster={toggleMyRoster} draftPick={myRosterCount + 1} />
+          )}
+          {activeTab === 'pool' && (
+            <FullPool ranked={ranked} onSelect={setSelectedPlayer}
+              onToggleDraft={toggleDrafted} onToggleMyRoster={toggleMyRoster}
+              draftedIds={draftedIds} myRosterIds={myRosterIds} />
           )}
           {activeTab === 'diagnostics' && (
             <DiagnosticsView diagnostics={diagnostics} settings={settings} ranked={ranked} />
@@ -151,14 +133,11 @@ export default function AppShell({ players, meta }: { players: RawPlayer[]; meta
         </main>
       </div>
 
-      {/* ── Player detail drawer ── */}
       {selectedPlayer && (
-        <PlayerDrawer
-          player={selectedPlayer}
-          settings={settings}
+        <PlayerDrawer player={selectedPlayer} settings={settings}
           onClose={() => setSelectedPlayer(null)}
-          onToggleDraft={toggleDrafted}
-        />
+          onToggleDraft={toggleDrafted} onToggleMyRoster={toggleMyRoster}
+          myRosterIds={myRosterIds} />
       )}
     </div>
   )
