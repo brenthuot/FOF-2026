@@ -5,7 +5,7 @@ Rankings are layered **on top** of BLND — the source formulas are never modifi
 
 ---
 
-## Quick start (local)
+## Quick start (local) 
 
 ```bash
 # 1. Install dependencies
