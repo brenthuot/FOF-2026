@@ -187,7 +187,7 @@ export default function ControlsPanel({ settings, onChange, diagnostics }: Props
         <Slider
           label="Tier gap threshold"
           value={settings.tierGapThreshold}
-          min={0.05} max={0.30} step={0.01}
+          min={0.01} max={0.20} step={0.005}
           onChange={v => set('tierGapThreshold', v)}
         />
         <div className="text-[10px] text-slate-600">

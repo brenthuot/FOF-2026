@@ -9,11 +9,13 @@ import FullPool from './FullPool'
 import DiagnosticsView from './DiagnosticsView'
 import ESPNEdgeView from './ESPNEdgeView'
 import PlayerDrawer from './PlayerDrawer'
+import TeamTracker from './TeamTracker'
 
-type Tab = 'draft' | 'pool' | 'diagnostics' | 'edges'
+type Tab = 'draft' | 'pool' | 'diagnostics' | 'edges' | 'team'
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'draft',       label: 'Draft Board',  icon: '🎯' },
+  { id: 'team',        label: 'My Team',      icon: '⚾' },
   { id: 'pool',        label: 'Full Pool',    icon: '📋' },
   { id: 'diagnostics', label: 'Diagnostics',  icon: '🔬' },
   { id: 'edges',       label: 'ESPN Edges',   icon: '📊' },
@@ -130,6 +132,14 @@ export default function AppShell({ players, meta }: { players: RawPlayer[]; meta
               onSelect={setSelectedPlayer}
               onToggleDraft={toggleDrafted}
               draftedIds={draftedIds}
+            />
+          )}
+          {activeTab === 'team' && (
+            <TeamTracker
+              myTeam={ranked.filter(p => p.drafted)}
+              ranked={ranked}
+              onSelect={setSelectedPlayer}
+              draftPick={draftedCount + 1}
             />
           )}
           {activeTab === 'diagnostics' && (
