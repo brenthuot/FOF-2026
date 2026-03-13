@@ -1,0 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { @apply bg-[#0f1b2d] text-slate-200 antialiased; }
+  * { box-sizing: border-box; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #0f1b2d; }
+  ::-webkit-scrollbar-thumb { background: #2d4a6b; border-radius: 3px; }
+}
+
+@layer utilities {
+  .table-fixed-header thead { position: sticky; top: 0; z-index: 10; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
