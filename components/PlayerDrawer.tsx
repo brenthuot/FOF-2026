@@ -7,6 +7,8 @@ interface Props {
   settings: ModelSettings
   onClose: () => void
   onToggleDraft: (id: string) => void
+  onToggleMyRoster: (id: string) => void
+  myRosterIds: Set<string>
 }
 
 function StatRow({ label, value, note }: { label: string; value: string | number; note?: string }) {
@@ -39,7 +41,7 @@ function BreakdownBar({ label, value, total, color }: {
   )
 }
 
-export default function PlayerDrawer({ player: p, settings, onClose, onToggleDraft }: Props) {
+export default function PlayerDrawer({ player: p, settings, onClose, onToggleDraft, onToggleMyRoster, myRosterIds }: Props) {
   const isHitter = p.type === 'H'
   const hw = settings.hitterWeight
   const pw = 1 - hw
@@ -213,17 +215,27 @@ export default function PlayerDrawer({ player: p, settings, onClose, onToggleDra
         </div>
       </div>
 
-      {/* Footer: draft toggle */}
-      <div className="flex-shrink-0 p-4 border-t border-slate-700/50">
+      {/* Footer: two action buttons */}
+      <div className="flex-shrink-0 p-4 border-t border-slate-700/50 space-y-2">
         <button
-          onClick={() => onToggleDraft(p.id)}
+          onClick={() => onToggleMyRoster(p.id)}
           className={`w-full py-2.5 rounded-lg text-sm font-medium transition-colors ${
-            p.drafted
-              ? 'bg-amber-900/50 text-amber-300 border border-amber-700 hover:bg-amber-800/50'
-              : 'bg-slate-700 text-white hover:bg-slate-600 border border-slate-600'
+            myRosterIds.has(p.id)
+              ? 'bg-blue-700 text-white border border-blue-500 hover:bg-blue-600'
+              : 'bg-blue-900/40 text-blue-300 border border-blue-700 hover:bg-blue-800/60'
           }`}
         >
-          {p.drafted ? '↩ Mark undrafted' : '✓ Mark as drafted'}
+          {myRosterIds.has(p.id) ? '✓ On my team — remove' : '+ Add to my team'}
+        </button>
+        <button
+          onClick={() => onToggleDraft(p.id)}
+          className={`w-full py-2 rounded-lg text-xs font-medium transition-colors ${
+            p.drafted && !myRosterIds.has(p.id)
+              ? 'bg-amber-900/50 text-amber-300 border border-amber-700 hover:bg-amber-800/50'
+              : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'
+          }`}
+        >
+          {p.drafted && !myRosterIds.has(p.id) ? '↩ Restore to board' : 'Mark drafted by others (off board)'}
         </button>
       </div>
     </div>
