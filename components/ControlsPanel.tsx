@@ -64,4 +64,86 @@ const badgeClass: Record<Health, string> = {
 const badgeLabel: Record<Health, string> = { ok: '✓', warn: '~', bad: '✗' }
 
 export default function ControlsPanel({ settings, onChange, diagnostics }: Props) {
-  const
+  const set = <K extends keyof ModelSettings>(k: K, v: ModelSettings[K]) =>
+    onChange({ ...settings, [k]: v })
+  const pitcherWeight = parseFloat((1 - settings.hitterWeight).toFixed(2))
+  const d20  = statusBadge(diagnostics.pitchersTop20,  4,  6)
+  const d50  = statusBadge(diagnostics.pitchersTop50,  12, 16)
+  const d100 = statusBadge(diagnostics.pitchersTop100, 25, 32)
+
+  return (
+    <div className="p-4 space-y-5 text-sm">
+      <div>
+        <div className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-1">Model Controls</div>
+        <p className="text-[11px] text-slate-600">All rankings update instantly as you adjust settings.</p>
+      </div>
+
+      <div className="bg-slate-800/50 rounded-lg p-3 space-y-2">
+        <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Live diagnostics</div>
+        {([
+          ['P in Top 20',  diagnostics.pitchersTop20,  4,  6,  d20],
+          ['P in Top 50',  diagnostics.pitchersTop50,  12, 16, d50],
+          ['P in Top 100', diagnostics.pitchersTop100, 25, 32, d100],
+        ] as [string, number, number, number, Health][]).map(([label, val, lo, hi, health]) => (
+          <div key={label} className="flex items-center justify-between">
+            <span className="text-[11px] text-slate-400">{label}</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-mono text-white text-xs">{val}</span>
+              <span className="text-[10px] text-slate-600">/ {lo}–{hi}</span>
+              <span className={`text-[10px] px-1 rounded ${badgeClass[health]}`}>{badgeLabel[health]}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <section className="space-y-4">
+        <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">Weights</div>
+        <Slider label="Hitter weight" value={settings.hitterWeight} min={0.45} max={0.70} step={0.01}
+          onChange={v => set('hitterWeight', v)} format={v => `${Math.round(v * 100)}%`} />
+        <div className="flex justify-between text-xs">
+          <span className="text-slate-500">Pitcher weight (auto)</span>
+          <span className="font-mono text-slate-400">{Math.round(pitcherWeight * 100)}%</span>
+        </div>
+        <Slider label="Pitcher compression" value={settings.pitcherCompression} min={0.70} max={1.10} step={0.01}
+          onChange={v => set('pitcherCompression', v)} />
+        <p className="text-[10px] text-slate-600 leading-relaxed">
+          Lower compression = fewer long pitcher streaks. Raise pitcher weight to push pitchers higher in the board.
+        </p>
+      </section>
+
+      <section className="space-y-3">
+        <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">Adjustments</div>
+        <Toggle label="Replacement value layer" desc="Modest boost to elite players at thin positions."
+          value={settings.replacementOn} onChange={v => set('replacementOn', v)} />
+        {settings.replacementOn && (
+          <Slider label="Replacement strength" value={settings.replacementStrength} min={0.5} max={2.0} step={0.1}
+            onChange={v => set('replacementStrength', v)} />
+        )}
+        <Toggle label="SB scarcity boost" desc="Minor bump for elite base-stealers. Keeps speed on the radar."
+          value={settings.sbScarcityOn} onChange={v => set('sbScarcityOn', v)} />
+        {settings.sbScarcityOn && (
+          <Slider label="SB boost strength" value={settings.sbStrength} min={0.5} max={2.0} step={0.1}
+            onChange={v => set('sbStrength', v)} />
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">Tiers</div>
+        <Slider label="Tier gap threshold" value={settings.tierGapThreshold} min={0.01} max={0.20} step={0.005}
+          onChange={v => set('tierGapThreshold', v)} />
+        <div className="text-[10px] text-slate-600">{diagnostics.totalTiers} tiers detected in top 300</div>
+      </section>
+
+      <button onClick={() => onChange(DEFAULT_SETTINGS)}
+        className="w-full py-2 rounded-lg text-xs font-medium text-slate-400 border border-slate-700 hover:border-blue-600 hover:text-blue-400 transition-colors">
+        Reset to defaults
+      </button>
+
+      <div className="bg-slate-800/30 rounded-lg p-3 text-[10px] text-slate-600 space-y-1 leading-relaxed">
+        <div className="text-slate-500 font-semibold">Methodology</div>
+        <div>BLND → separate H/P normalization → weights → pitcher compression → optional replacement layer → optional SB scarcity → tier detection</div>
+        <div className="text-amber-600/80 mt-1">BLND formulas from BH Batting / BH Pitching are never modified.</div>
+      </div>
+    </div>
+  )
+}
