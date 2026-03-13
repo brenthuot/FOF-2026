@@ -1,5 +1,4 @@
-import type { Diagnostics } from './scoring'
-export type { Diagnostics }
+// ─── Raw data shape (from players.json) ───────────────────────────────────────
 
 export interface PlayerStats {
   r:    number | null
@@ -19,11 +18,11 @@ export interface RawPlayer {
   id:         string
   name:       string
   team:       string
-  position:   string
-  primaryPos: string
+  position:   string   // e.g. "1B/OF"
+  primaryPos: string   // e.g. "1B"
   type:       'H' | 'P'
   blnd:       number
-  zBlnd:      number
+  zBlnd:      number   // pre-computed at default normalization
   espnRank:   number | null
   stats:      PlayerStats
 }
@@ -40,34 +39,41 @@ export interface DataMeta {
   pitchers: number
 }
 
+// ─── Model settings (Controls) ────────────────────────────────────────────────
+
 export interface ModelSettings {
-  hitterWeight:       number
-  pitcherCompression: number
-  replacementOn:      boolean
-  replacementStrength:number
-  sbScarcityOn:       boolean
-  sbStrength:         number
-  tierGapThreshold:   number
+  hitterWeight:       number    // 0.55
+  pitcherCompression: number    // 0.95
+  replacementOn:      boolean   // true
+  replacementStrength:number    // 1.0
+  sbScarcityOn:       boolean   // true
+  sbStrength:         number    // 1.0
+  tierGapThreshold:   number    // 0.12
 }
 
 export const DEFAULT_SETTINGS: ModelSettings = {
-  hitterWeight:        0.58,
-  pitcherCompression:  1.02,
+  hitterWeight:        0.58,   // 58/42 — keeps 5 P in top 20 while reducing top 100 crowding
+  pitcherCompression:  1.02,   // slightly above 1.0 compresses mid-tier SP cluster
   replacementOn:       true,
   replacementStrength: 1.0,
   sbScarcityOn:        true,
   sbStrength:          1.0,
-  tierGapThreshold:    0.030,
+  tierGapThreshold:    0.035,
 }
 
+// Re-export Diagnostics type so components can import from one place
+export type { Diagnostics } from './scoring'
+
 export interface ScoredPlayer extends RawPlayer {
+  // scoring breakdown
   baseScore:   number
   replBase:    number
   sbBase:      number
   finalScore:  number
+  // ranking
   rank:        number
   tier:        number
   gapFromPrev: number
-  edge:        number | null
+  edge:        number | null   // ESPN rank − model rank (positive = model likes more)
   drafted:     boolean
 }
