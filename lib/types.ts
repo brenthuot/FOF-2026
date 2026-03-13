@@ -48,7 +48,7 @@ export interface ModelSettings {
   replacementStrength:number    // 1.0
   sbScarcityOn:       boolean   // true
   sbStrength:         number    // 1.0
-  tierGapThreshold:   number    // 0.12
+  tierGapThreshold:   number    // 0.030
 }
 
 export const DEFAULT_SETTINGS: ModelSettings = {
