@@ -7,12 +7,14 @@ interface Props {
   ranked: ScoredPlayer[]
   onSelect: (p: ScoredPlayer) => void
   onToggleDraft: (id: string) => void
+  onToggleMyRoster: (id: string) => void
   draftedIds: Set<string>
+  myRosterIds: Set<string>
 }
 
 type SortKey = 'rank' | 'blnd' | 'finalScore' | 'espnRank' | 'edge' | 'name'
 
-export default function FullPool({ ranked, onSelect, onToggleDraft, draftedIds }: Props) {
+export default function FullPool({ ranked, onSelect, onToggleDraft, onToggleMyRoster, draftedIds, myRosterIds }: Props) {
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState<'ALL' | 'H' | 'P'>('ALL')
   const [filterPos, setFilterPos] = useState('ALL')
@@ -144,9 +146,15 @@ export default function FullPool({ ranked, onSelect, onToggleDraft, draftedIds }
                 <td className="px-2 py-1.5 text-right text-slate-500 font-mono">{fmt(p.stats.era, 2)}</td>
                 <td className="px-2 py-1.5 text-right text-slate-500 font-mono">{fmt(p.stats.whip, 2)}</td>
                 <td className="px-2 py-1.5 text-right text-slate-500 font-mono">{fmt(p.stats.sv)}</td>
-                <td className="px-2 py-1.5 text-center" onClick={e => { e.stopPropagation(); onToggleDraft(p.id) }}>
-                  <button className={`w-4 h-4 rounded-full border transition-colors ${
-                    p.drafted ? 'bg-amber-500 border-amber-400' : 'border-slate-600 hover:border-amber-500'}`} />
+                <td className="px-2 py-1.5 text-center" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center gap-1 justify-center">
+                    <button onClick={() => onToggleMyRoster(p.id)} title="Add to my team"
+                      className={`w-4 h-4 rounded-full border text-[8px] font-bold transition-colors ${
+                        myRosterIds.has(p.id) ? 'bg-blue-500 border-blue-400 text-white' : 'border-blue-700 text-blue-700 hover:bg-blue-500 hover:text-white'}`}>M</button>
+                    <button onClick={() => onToggleDraft(p.id)} title="Mark drafted off board"
+                      className={`w-4 h-4 rounded-full border text-[8px] font-bold transition-colors ${
+                        p.drafted && !myRosterIds.has(p.id) ? 'bg-amber-500 border-amber-400 text-white' : 'border-slate-600 text-slate-600 hover:bg-amber-500 hover:text-white'}`}>D</button>
+                  </div>
                 </td>
               </tr>
             ))}
