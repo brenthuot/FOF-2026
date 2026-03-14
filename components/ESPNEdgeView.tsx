@@ -46,10 +46,9 @@ export default function ESPNEdgeView({ ranked, onSelect }: Props) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Summary cards */}
       <div className="flex-shrink-0 grid grid-cols-4 gap-3 p-4 border-b border-slate-700/50">
         <div className="bg-emerald-950/40 border border-emerald-800/50 rounded-lg p-3">
-          <div className="text-xs text-slate-500">Strong buys (+20)</div>
+          <div className="text-xs text-slate-500">Sleepers (+20)</div>
           <div className="text-2xl font-bold text-emerald-300 font-mono">{bigPos}</div>
           <div className="text-[10px] text-slate-600">Model likes more than ESPN</div>
         </div>
@@ -70,21 +69,16 @@ export default function ESPNEdgeView({ ranked, onSelect }: Props) {
         </div>
       </div>
 
-      {/* Formula explainer */}
       <div className="flex-shrink-0 px-4 py-2 bg-slate-900/50 border-b border-slate-700/30 text-xs text-slate-600">
         <span className="text-slate-500 font-medium">Edge formula: </span>
         ESPN Rank − Model Rank.
-        <span className="text-emerald-600 ml-2">Positive = model likes this player more than ESPN (buy).</span>
+        <span className="text-emerald-600 ml-2">Positive = model likes this player more than ESPN (sleeper).</span>
         <span className="text-red-600 ml-2">Negative = ESPN likes more (fade).</span>
       </div>
 
-      {/* Toolbar */}
       <div className="flex-shrink-0 flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-slate-700/50 bg-[#0f1b2d]">
-        <input
-          value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Search…"
-          className="w-40 bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-        />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
+          className="w-40 bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" />
         <div className="flex rounded overflow-hidden border border-slate-700 text-xs">
           {([
             ['all', 'All'],
@@ -113,7 +107,6 @@ export default function ESPNEdgeView({ ranked, onSelect }: Props) {
         <span className="ml-auto text-xs text-slate-600">{filtered.length} players</span>
       </div>
 
-      {/* Table */}
       <div className="flex-1 overflow-auto">
         <table className="w-full text-xs border-collapse">
           <thead className="sticky top-0 z-10 bg-[#0d1c30]">
@@ -159,8 +152,8 @@ export default function ESPNEdgeView({ ranked, onSelect }: Props) {
                     {edge > 0 ? `+${edge}` : edge}
                   </td>
                   <td className="px-2 py-2 text-center">
-                    {isStrongBuy  && <span className="text-xs bg-emerald-900/80 text-emerald-300 border border-emerald-700 px-1.5 py-0.5 rounded">BUY</span>}
-                    {isStrongFade && <span className="text-xs bg-red-900/80    text-red-300    border border-red-700    px-1.5 py-0.5 rounded">FADE</span>}
+                    {isStrongBuy  && <span className="text-xs bg-emerald-900/80 text-emerald-300 border border-emerald-700 px-1.5 py-0.5 rounded">SLEEPER</span>}
+                    {isStrongFade && <span className="text-xs bg-red-900/80 text-red-300 border border-red-700 px-1.5 py-0.5 rounded">FADE</span>}
                     {!isStrongBuy && !isStrongFade && edge > 0 && <span className="text-xs text-emerald-700">↑</span>}
                     {!isStrongBuy && !isStrongFade && edge < 0 && <span className="text-xs text-red-700">↓</span>}
                   </td>
