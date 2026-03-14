@@ -44,7 +44,7 @@ interface Props {
 // ── Category strength scorer ──────────────────────────────────────────────────
 function scoreCatStrength(players: ScoredPlayer[], cat: string): number {
   const vals = players
-    .map(p => (p.stats as Record<string, number | null>)[cat.toLowerCase()])
+    .map(p => (p.stats as unknown as Record<string, number | null>)[cat.toLowerCase()])
     .filter((v): v is number => v != null)
   if (!vals.length) return 0
   return vals.reduce((a, b) => a + b, 0) / vals.length
