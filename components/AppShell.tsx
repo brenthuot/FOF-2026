@@ -50,7 +50,7 @@ export default function AppShell({ players, meta }: { players: RawPlayer[]; meta
         next.delete(id)
       } else {
         next.add(id)
-        setDraftedIds(d => new Set([...d, id]))
+        setDraftedIds(d => { const s = new Set(d); s.add(id); return s })
       }
       return next
     })
