@@ -37,14 +37,20 @@ function Toggle({ label, value, onChange, desc }: {
   label: string; value: boolean; onChange: (v: boolean) => void; desc?: string
 }) {
   return (
-    <div className="flex items-start justify-between gap-2">
-      <div className="flex-1">
+    <div className="flex items-start justify-between gap-3">
+      <div className="flex-1 min-w-0">
         <div className="text-xs text-slate-400">{label}</div>
         {desc && <div className="text-[10px] text-slate-600 mt-0.5">{desc}</div>}
       </div>
-      <button onClick={() => onChange(!value)}
-        className={`flex-shrink-0 w-9 h-5 rounded-full transition-colors relative mt-0.5 ${value ? 'bg-blue-500' : 'bg-slate-700'}`}>
-        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${value ? 'translate-x-4' : 'translate-x-0.5'}`} />
+      <button
+        onClick={() => onChange(!value)}
+        style={{ minWidth: '36px', width: '36px', height: '20px' }}
+        className={`flex-shrink-0 rounded-full transition-colors relative mt-0.5 ${value ? 'bg-blue-500' : 'bg-slate-700'}`}
+      >
+        <span
+          style={{ width: '14px', height: '14px', top: '3px', transition: 'transform 0.15s' }}
+          className={`absolute rounded-full bg-white shadow ${value ? 'translate-x-5' : 'translate-x-0.5'}`}
+        />
       </button>
     </div>
   )
