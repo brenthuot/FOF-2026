@@ -10,6 +10,7 @@ import DiagnosticsView from './DiagnosticsView'
 import ESPNEdgeView from './ESPNEdgeView'
 import PlayerDrawer from './PlayerDrawer'
 import TeamTracker from './TeamTracker'
+import DraftImport from './DraftImport'
 
 type Tab = 'draft' | 'team' | 'pool' | 'diagnostics' | 'edges'
 
@@ -28,6 +29,7 @@ export default function AppShell({ players, meta }: { players: RawPlayer[]; meta
   const [controlsOpen, setControlsOpen]     = useState(true)
   const [draftedIds, setDraftedIds]         = useState<Set<string>>(new Set())
   const [myRosterIds, setMyRosterIds]       = useState<Set<string>>(new Set())
+  const [showImport, setShowImport]         = useState(false)
 
   const ranked = useMemo(
     () => computeRankings(players, meta, settings, draftedIds),
@@ -56,6 +58,28 @@ export default function AppShell({ players, meta }: { players: RawPlayer[]; meta
     })
   }, [])
 
+  const handleImport = useCallback((draftedList: string[], myPickList: string[]) => {
+    setDraftedIds(prev => {
+      const next = new Set(prev)
+      draftedList.forEach(id => next.add(id))
+      myPickList.forEach(id => next.add(id))
+      return next
+    })
+    setMyRosterIds(prev => {
+      const next = new Set(prev)
+      myPickList.forEach(id => next.add(id))
+      return next
+    })
+  }, [])
+
+  const handleReset = useCallback(() => {
+    if (confirm('Reset all draft picks? This clears your roster and the board for a new mock draft.')) {
+      setDraftedIds(new Set())
+      setMyRosterIds(new Set())
+      setSelectedPlayer(null)
+    }
+  }, [])
+
   const draftedCount  = draftedIds.size
   const myRosterCount = myRosterIds.size
   const myTeam = useMemo(() => ranked.filter(p => myRosterIds.has(p.id)), [ranked, myRosterIds])
@@ -67,19 +91,21 @@ export default function AppShell({ players, meta }: { players: RawPlayer[]; meta
       </aside>
 
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <header className="flex-shrink-0 flex items-center gap-3 px-4 py-2.5 border-b border-slate-700/50 bg-[#0f1b2d]">
+        <header className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-slate-700/50 bg-[#0f1b2d]">
           <button onClick={() => setControlsOpen(o => !o)}
             className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16"/>
             </svg>
           </button>
+
           <div className="flex items-center gap-2 mr-2">
             <span className="text-lg">⚾</span>
             <span className="font-semibold text-white text-sm tracking-wide">Draft 2026</span>
             <span className="text-xs text-slate-500 font-mono">H2H · 10-Team · BLND</span>
           </div>
-          <nav className="flex gap-0.5 ml-auto">
+
+          <nav className="flex gap-0.5">
             {TABS.map(t => (
               <button key={t.id} onClick={() => setActiveTab(t.id)}
                 className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${activeTab === t.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}>
@@ -90,20 +116,35 @@ export default function AppShell({ players, meta }: { players: RawPlayer[]; meta
               </button>
             ))}
           </nav>
-          <div className="flex items-center gap-2 ml-2">
+
+          <div className="flex items-center gap-2 ml-auto">
+            {/* Import button */}
+            <button
+              onClick={() => setShowImport(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-emerald-700 text-white hover:bg-emerald-600 transition-colors"
+            >
+              📥 Import Round
+            </button>
+
+            {/* Reset button */}
+            <button
+              onClick={handleReset}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-slate-700 text-slate-300 hover:bg-red-900/60 hover:text-red-300 transition-colors border border-slate-600"
+            >
+              ↺ Reset Draft
+            </button>
+
+            {/* Counters */}
             {myRosterCount > 0 && (
               <div className="flex items-center gap-1.5 bg-blue-900/40 border border-blue-700 rounded px-2 py-1 text-xs text-blue-300">
                 <span className="w-2 h-2 rounded-full bg-blue-400" />
                 {myRosterCount} my picks
-                <button onClick={() => setMyRosterIds(new Set())} className="text-blue-600 hover:text-white ml-0.5">✕</button>
               </div>
             )}
             {draftedCount > 0 && (
               <div className="flex items-center gap-1.5 bg-slate-800 rounded px-2 py-1 text-xs text-slate-400">
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                 {draftedCount} off board
-                <button onClick={() => { setDraftedIds(new Set()); setMyRosterIds(new Set()) }}
-                  className="text-slate-600 hover:text-white ml-0.5">✕</button>
               </div>
             )}
           </div>
@@ -138,6 +179,15 @@ export default function AppShell({ players, meta }: { players: RawPlayer[]; meta
           onClose={() => setSelectedPlayer(null)}
           onToggleDraft={toggleDrafted} onToggleMyRoster={toggleMyRoster}
           myRosterIds={myRosterIds} />
+      )}
+
+      {showImport && (
+        <DraftImport
+          players={ranked}
+          onImport={handleImport}
+          onClose={() => setShowImport(false)}
+          totalDrafted={draftedCount}
+        />
       )}
     </div>
   )
