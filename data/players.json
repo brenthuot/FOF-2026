@@ -17,9 +17,9 @@
       "SP": 0.6915813,
       "RP": -0.36015578
     },
-    "totalPlayers": 492,
-    "hitters": 242,
-    "pitchers": 250
+    "totalPlayers": 474,
+    "hitters": 230,
+    "pitchers": 244
   },
   "players": [
     {
@@ -62,30 +62,6 @@
         "rbi": 98.988,
         "sb": 4.7888,
         "ops": 0.913734,
-        "qs": null,
-        "k": null,
-        "sv": null,
-        "era": null,
-        "whip": null,
-        "ip": null
-      }
-    },
-    {
-      "id": "pete-alonso",
-      "name": "Pete Alonso",
-      "team": "BAL",
-      "position": "1B",
-      "primaryPos": "1B",
-      "type": "H",
-      "blnd": 29.52,
-      "zBlnd": 1.66509,
-      "espnRank": 27,
-      "stats": {
-        "r": 87.8874,
-        "hr": 35.2927,
-        "rbi": 99.8405,
-        "sb": 2.7585,
-        "ops": 0.830938,
         "qs": null,
         "k": null,
         "sv": null,
@@ -230,30 +206,6 @@
         "rbi": 80.2336,
         "sb": 9.4502,
         "ops": 0.784966,
-        "qs": null,
-        "k": null,
-        "sv": null,
-        "era": null,
-        "whip": null,
-        "ip": null
-      }
-    },
-    {
-      "id": "josh-naylor",
-      "name": "Josh Naylor",
-      "team": "SEA",
-      "position": "1B",
-      "primaryPos": "1B",
-      "type": "H",
-      "blnd": 25.02,
-      "zBlnd": 1.096142,
-      "espnRank": 58,
-      "stats": {
-        "r": 71.2145,
-        "hr": 22.5183,
-        "rbi": 80.343,
-        "sb": 14.9625,
-        "ops": 0.780384,
         "qs": null,
         "k": null,
         "sv": null,
@@ -1055,30 +1007,6 @@
       }
     },
     {
-      "id": "junior-caminero",
-      "name": "Junior Caminero",
-      "team": "TBR",
-      "position": "3B",
-      "primaryPos": "3B",
-      "type": "H",
-      "blnd": 29.52,
-      "zBlnd": 1.66509,
-      "espnRank": 19,
-      "stats": {
-        "r": 71.3935,
-        "hr": 32.4533,
-        "rbi": 87.8192,
-        "sb": 4.9539,
-        "ops": 0.849508,
-        "qs": null,
-        "k": null,
-        "sv": null,
-        "era": null,
-        "whip": null,
-        "ip": null
-      }
-    },
-    {
       "id": "manny-machado",
       "name": "Manny Machado",
       "team": "SDP",
@@ -1646,30 +1574,6 @@
         "rbi": 42.6624,
         "sb": 11.1591,
         "ops": 0.688692,
-        "qs": null,
-        "k": null,
-        "sv": null,
-        "era": null,
-        "whip": null,
-        "ip": null
-      }
-    },
-    {
-      "id": "cal-raleigh",
-      "name": "Cal Raleigh",
-      "team": "SEA",
-      "position": "C",
-      "primaryPos": "C",
-      "type": "H",
-      "blnd": 28.8,
-      "zBlnd": 1.574058,
-      "espnRank": 29,
-      "stats": {
-        "r": 88.6474,
-        "hr": 37.531,
-        "rbi": 90.9235,
-        "sb": 8.0118,
-        "ops": 0.818158,
         "qs": null,
         "k": null,
         "sv": null,
@@ -2327,54 +2231,6 @@
       }
     },
     {
-      "id": "julio-rodr-guez",
-      "name": "Julio Rodr\u00edguez",
-      "team": "SEA",
-      "position": "OF",
-      "primaryPos": "OF",
-      "type": "H",
-      "blnd": 30.0,
-      "zBlnd": 1.725777,
-      "espnRank": 10,
-      "stats": {
-        "r": 85.2447,
-        "hr": 29.8301,
-        "rbi": 91.2925,
-        "sb": 22.5962,
-        "ops": 0.8253,
-        "qs": null,
-        "k": null,
-        "sv": null,
-        "era": null,
-        "whip": null,
-        "ip": null
-      }
-    },
-    {
-      "id": "ronald-acu-a-jr-",
-      "name": "Ronald Acu\u00f1a Jr.",
-      "team": "ATL",
-      "position": "OF",
-      "primaryPos": "OF",
-      "type": "H",
-      "blnd": 30.0,
-      "zBlnd": 1.725777,
-      "espnRank": 8,
-      "stats": {
-        "r": 109.242,
-        "hr": 30.8135,
-        "rbi": 84.0682,
-        "sb": 24.1561,
-        "ops": 0.891401,
-        "qs": null,
-        "k": null,
-        "sv": null,
-        "era": null,
-        "whip": null,
-        "ip": null
-      }
-    },
-    {
       "id": "aaron-judge",
       "name": "Aaron Judge",
       "team": "NYY",
@@ -2390,54 +2246,6 @@
         "rbi": 102.358,
         "sb": 8.8032,
         "ops": 0.997844,
-        "qs": null,
-        "k": null,
-        "sv": null,
-        "era": null,
-        "whip": null,
-        "ip": null
-      }
-    },
-    {
-      "id": "kyle-schwarber",
-      "name": "Kyle Schwarber",
-      "team": "PHI",
-      "position": "OF",
-      "primaryPos": "OF",
-      "type": "H",
-      "blnd": 29.7,
-      "zBlnd": 1.687848,
-      "espnRank": 20,
-      "stats": {
-        "r": 96.6163,
-        "hr": 39.4623,
-        "rbi": 89.7417,
-        "sb": 6.2703,
-        "ops": 0.851679,
-        "qs": null,
-        "k": null,
-        "sv": null,
-        "era": null,
-        "whip": null,
-        "ip": null
-      }
-    },
-    {
-      "id": "brent-rooker",
-      "name": "Brent Rooker",
-      "team": "ATH",
-      "position": "OF",
-      "primaryPos": "OF",
-      "type": "H",
-      "blnd": 29.58,
-      "zBlnd": 1.672676,
-      "espnRank": 44,
-      "stats": {
-        "r": 82.3101,
-        "hr": 30.4644,
-        "rbi": 90.5023,
-        "sb": 5.3661,
-        "ops": 0.819927,
         "qs": null,
         "k": null,
         "sv": null,
@@ -2582,30 +2390,6 @@
         "rbi": 72.7308,
         "sb": 21.8053,
         "ops": 0.790091,
-        "qs": null,
-        "k": null,
-        "sv": null,
-        "era": null,
-        "whip": null,
-        "ip": null
-      }
-    },
-    {
-      "id": "george-springer",
-      "name": "George Springer",
-      "team": "TOR",
-      "position": "OF",
-      "primaryPos": "OF",
-      "type": "H",
-      "blnd": 26.04,
-      "zBlnd": 1.225103,
-      "espnRank": 92,
-      "stats": {
-        "r": 86.1941,
-        "hr": 25.8159,
-        "rbi": 72.5251,
-        "sb": 13.0511,
-        "ops": 0.794933,
         "qs": null,
         "k": null,
         "sv": null,
@@ -2894,30 +2678,6 @@
         "rbi": 73.6482,
         "sb": 7.8336,
         "ops": 0.758535,
-        "qs": null,
-        "k": null,
-        "sv": null,
-        "era": null,
-        "whip": null,
-        "ip": null
-      }
-    },
-    {
-      "id": "randy-arozarena",
-      "name": "Randy Arozarena",
-      "team": "SEA",
-      "position": "OF",
-      "primaryPos": "OF",
-      "type": "H",
-      "blnd": 21.3,
-      "zBlnd": 0.625811,
-      "espnRank": 77,
-      "stats": {
-        "r": 76.8656,
-        "hr": 21.3838,
-        "rbi": 73.7843,
-        "sb": 21.4209,
-        "ops": 0.732357,
         "qs": null,
         "k": null,
         "sv": null,
@@ -3254,30 +3014,6 @@
         "rbi": 58.0502,
         "sb": 16.0218,
         "ops": 0.747257,
-        "qs": null,
-        "k": null,
-        "sv": null,
-        "era": null,
-        "whip": null,
-        "ip": null
-      }
-    },
-    {
-      "id": "roman-anthony",
-      "name": "Roman Anthony",
-      "team": "BOS",
-      "position": "OF",
-      "primaryPos": "OF",
-      "type": "H",
-      "blnd": 18.12,
-      "zBlnd": 0.223755,
-      "espnRank": 33,
-      "stats": {
-        "r": 72.4936,
-        "hr": 15.1586,
-        "rbi": 51.4979,
-        "sb": 8.2517,
-        "ops": 0.803291,
         "qs": null,
         "k": null,
         "sv": null,
@@ -5471,30 +5207,6 @@
       }
     },
     {
-      "id": "jeremy-pe-a",
-      "name": "Jeremy Pe\u00f1a",
-      "team": "HOU",
-      "position": "SS",
-      "primaryPos": "SS",
-      "type": "H",
-      "blnd": 19.26,
-      "zBlnd": 0.367888,
-      "espnRank": 73,
-      "stats": {
-        "r": 70.8518,
-        "hr": 17.0162,
-        "rbi": 64.5666,
-        "sb": 14.9542,
-        "ops": 0.756366,
-        "qs": null,
-        "k": null,
-        "sv": null,
-        "era": null,
-        "whip": null,
-        "ip": null
-      }
-    },
-    {
       "id": "marcus-semien",
       "name": "Marcus Semien",
       "team": "NYM",
@@ -7655,78 +7367,6 @@
       }
     },
     {
-      "id": "paul-skenes",
-      "name": "Paul Skenes",
-      "team": "PIT",
-      "position": "SP",
-      "primaryPos": "SP",
-      "type": "P",
-      "blnd": 48.9998,
-      "zBlnd": 2.098239,
-      "espnRank": 11,
-      "stats": {
-        "r": null,
-        "hr": null,
-        "rbi": null,
-        "sb": null,
-        "ops": null,
-        "qs": 21.2598,
-        "k": 238.635,
-        "sv": 0.0,
-        "era": 2.92097,
-        "whip": 1.08137,
-        "ip": 193.982
-      }
-    },
-    {
-      "id": "tarik-skubal",
-      "name": "Tarik Skubal",
-      "team": "DET",
-      "position": "SP",
-      "primaryPos": "SP",
-      "type": "P",
-      "blnd": 48.9998,
-      "zBlnd": 2.098239,
-      "espnRank": 7,
-      "stats": {
-        "r": null,
-        "hr": null,
-        "rbi": null,
-        "sb": null,
-        "ops": null,
-        "qs": 22.6638,
-        "k": 242.836,
-        "sv": 0.0,
-        "era": 2.78933,
-        "whip": 1.01466,
-        "ip": 199.765
-      }
-    },
-    {
-      "id": "george-kirby",
-      "name": "George Kirby",
-      "team": "SEA",
-      "position": "SP",
-      "primaryPos": "SP",
-      "type": "P",
-      "blnd": 48.8998,
-      "zBlnd": 2.089706,
-      "espnRank": 60,
-      "stats": {
-        "r": null,
-        "hr": null,
-        "rbi": null,
-        "sb": null,
-        "ops": null,
-        "qs": 17.0958,
-        "k": 189.389,
-        "sv": 0.0,
-        "era": 3.50958,
-        "whip": 1.11896,
-        "ip": 178.218
-      }
-    },
-    {
       "id": "bryan-woo",
       "name": "Bryan Woo",
       "team": "SEA",
@@ -7820,30 +7460,6 @@
         "era": 3.51929,
         "whip": 1.09998,
         "ip": 174.797
-      }
-    },
-    {
-      "id": "jes-s-luzardo",
-      "name": "Jes\u00fas Luzardo",
-      "team": "PHI",
-      "position": "SP",
-      "primaryPos": "SP",
-      "type": "P",
-      "blnd": 47.1998,
-      "zBlnd": 1.944635,
-      "espnRank": 83,
-      "stats": {
-        "r": null,
-        "hr": null,
-        "rbi": null,
-        "sb": null,
-        "ops": null,
-        "qs": 17.3351,
-        "k": 191.361,
-        "sv": 0.0,
-        "era": 3.57127,
-        "whip": 1.19373,
-        "ip": 180.975
       }
     },
     {
@@ -8183,30 +7799,6 @@
       }
     },
     {
-      "id": "nick-pivetta",
-      "name": "Nick Pivetta",
-      "team": "SDP",
-      "position": "SP",
-      "primaryPos": "SP",
-      "type": "P",
-      "blnd": 43.7998,
-      "zBlnd": 1.654493,
-      "espnRank": 91,
-      "stats": {
-        "r": null,
-        "hr": null,
-        "rbi": null,
-        "sb": null,
-        "ops": null,
-        "qs": 15.58,
-        "k": 171.529,
-        "sv": 0.0,
-        "era": 3.96601,
-        "whip": 1.20279,
-        "ip": 174.053
-      }
-    },
-    {
       "id": "framber-valdez",
       "name": "Framber Valdez",
       "team": "DET",
@@ -8516,30 +8108,6 @@
         "era": 3.82392,
         "whip": 1.22562,
         "ip": 160.846
-      }
-    },
-    {
-      "id": "hunter-greene",
-      "name": "Hunter Greene",
-      "team": "CIN",
-      "position": "SP",
-      "primaryPos": "SP",
-      "type": "P",
-      "blnd": 38.9999,
-      "zBlnd": 1.24488,
-      "espnRank": 78,
-      "stats": {
-        "r": null,
-        "hr": null,
-        "rbi": null,
-        "sb": null,
-        "ops": null,
-        "qs": 12.713,
-        "k": 144.527,
-        "sv": 0.0,
-        "era": 3.91109,
-        "whip": 1.18117,
-        "ip": 146.766
       }
     },
     {
