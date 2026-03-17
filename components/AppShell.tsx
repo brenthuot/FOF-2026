@@ -22,14 +22,23 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'edges',       label: 'ESPN Edges',  icon: '📊' },
 ]
 
-export default function AppShell({ players, meta }: { players: RawPlayer[]; meta: DataMeta }) {
+interface Props {
+  players: RawPlayer[]
+  meta: DataMeta
+  preDraftedIds: string[]
+}
+
+export default function AppShell({ players, meta, preDraftedIds }: Props) {
   const [settings, setSettings]             = useState<ModelSettings>(DEFAULT_SETTINGS)
   const [activeTab, setActiveTab]           = useState<Tab>('draft')
   const [selectedPlayer, setSelectedPlayer] = useState<ScoredPlayer | null>(null)
   const [controlsOpen, setControlsOpen]     = useState(true)
-  const [draftedIds, setDraftedIds]         = useState<Set<string>>(new Set())
-  const [myRosterIds, setMyRosterIds]       = useState<Set<string>>(new Set())
   const [showImport, setShowImport]         = useState(false)
+
+  const [draftedIds, setDraftedIds] = useState<Set<string>>(
+    () => new Set(preDraftedIds)
+  )
+  const [myRosterIds, setMyRosterIds] = useState<Set<string>>(new Set())
 
   const ranked = useMemo(
     () => computeRankings(players, meta, settings, draftedIds),
@@ -40,10 +49,11 @@ export default function AppShell({ players, meta }: { players: RawPlayer[]; meta
   const toggleDrafted = useCallback((id: string) => {
     setDraftedIds(prev => {
       const next = new Set(prev)
+      if (preDraftedIds.includes(id) && next.has(id)) return next
       next.has(id) ? next.delete(id) : next.add(id)
       return next
     })
-  }, [])
+  }, [preDraftedIds])
 
   const toggleMyRoster = useCallback((id: string) => {
     setMyRosterIds(prev => {
@@ -73,14 +83,14 @@ export default function AppShell({ players, meta }: { players: RawPlayer[]; meta
   }, [])
 
   const handleReset = useCallback(() => {
-    if (confirm('Reset all draft picks? This clears your roster and the board for a new mock draft.')) {
-      setDraftedIds(new Set())
+    if (confirm('Reset draft? Clears your roster and all imported picks. Pre-drafted players stay off the board.')) {
+      setDraftedIds(new Set(preDraftedIds))
       setMyRosterIds(new Set())
       setSelectedPlayer(null)
     }
-  }, [])
+  }, [preDraftedIds])
 
-  const draftedCount  = draftedIds.size
+  const draftedCount  = draftedIds.size - preDraftedIds.length
   const myRosterCount = myRosterIds.size
   const myTeam = useMemo(() => ranked.filter(p => myRosterIds.has(p.id)), [ranked, myRosterIds])
 
@@ -98,13 +108,11 @@ export default function AppShell({ players, meta }: { players: RawPlayer[]; meta
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16"/>
             </svg>
           </button>
-
           <div className="flex items-center gap-2 mr-2">
             <span className="text-lg">⚾</span>
             <span className="font-semibold text-white text-sm tracking-wide">Draft 2026</span>
             <span className="text-xs text-slate-500 font-mono">H2H · 10-Team · BLND</span>
           </div>
-
           <nav className="flex gap-0.5">
             {TABS.map(t => (
               <button key={t.id} onClick={() => setActiveTab(t.id)}
@@ -116,25 +124,15 @@ export default function AppShell({ players, meta }: { players: RawPlayer[]; meta
               </button>
             ))}
           </nav>
-
           <div className="flex items-center gap-2 ml-auto">
-            {/* Import button */}
-            <button
-              onClick={() => setShowImport(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-emerald-700 text-white hover:bg-emerald-600 transition-colors"
-            >
+            <button onClick={() => setShowImport(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-emerald-700 text-white hover:bg-emerald-600 transition-colors">
               📥 Import Round
             </button>
-
-            {/* Reset button */}
-            <button
-              onClick={handleReset}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-slate-700 text-slate-300 hover:bg-red-900/60 hover:text-red-300 transition-colors border border-slate-600"
-            >
+            <button onClick={handleReset}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-slate-700 text-slate-300 hover:bg-red-900/60 hover:text-red-300 transition-colors border border-slate-600">
               ↺ Reset Draft
             </button>
-
-            {/* Counters */}
             {myRosterCount > 0 && (
               <div className="flex items-center gap-1.5 bg-blue-900/40 border border-blue-700 rounded px-2 py-1 text-xs text-blue-300">
                 <span className="w-2 h-2 rounded-full bg-blue-400" />
@@ -182,12 +180,8 @@ export default function AppShell({ players, meta }: { players: RawPlayer[]; meta
       )}
 
       {showImport && (
-        <DraftImport
-          players={ranked}
-          onImport={handleImport}
-          onClose={() => setShowImport(false)}
-          totalDrafted={draftedCount}
-        />
+        <DraftImport players={ranked} onImport={handleImport}
+          onClose={() => setShowImport(false)} totalDrafted={draftedCount} />
       )}
     </div>
   )
