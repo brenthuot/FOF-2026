@@ -51,8 +51,8 @@ export interface ModelSettings {
 }
 
 export const DEFAULT_SETTINGS: ModelSettings = {
-  hitterWeight:        0.55,
-  pitcherCompression:  0.85,
+  hitterWeight:        0.50,
+  pitcherCompression:  0.80,
   replacementOn:       true,
   replacementStrength: 1.0,
   sbScarcityOn:        true,
