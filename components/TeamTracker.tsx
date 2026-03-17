@@ -242,7 +242,8 @@ function getRecommendations(
       if (sb > 0) { boost += sb; tags.push(`⚠️ ${pos} scarce (${scarcity[pos]??0} left)`); if (priority==='low') priority='med' }
     }
 
-    if (boost > 0.05 || (p.rank <= 15 && phase !== 'late')) {
+    // Entry gate — lowered threshold + elite players always visible in early rounds
+    if (boost > 0.04 || (p.rank <= 30 && phase === 'early') || (p.rank <= 15 && phase !== 'late')) {
       recs.push({ player: p, priority, score: p.finalScore + boost, tags })
     }
   }
@@ -403,7 +404,6 @@ export default function TeamTracker({ myTeam, ranked, onSelect, onToggleMyRoster
                   {needs.hitterSlotsFull && needs.pitcherSlotsFull ? '✅ Roster is full!' : 'No strong recommendations — check the Draft Board.'}
                 </div>
               ) : recs.map(({ player: p, priority, tags }, i) => {
-                // Filter out "Can wait" from displayed tags — penalty already did its job
                 const visibleTags = tags.filter(t => !t.includes('Can wait'))
                 return (
                   <div key={p.id} onClick={() => onSelect(p)}
@@ -419,7 +419,6 @@ export default function TeamTracker({ myTeam, ranked, onSelect, onToggleMyRoster
                         {visibleTags.slice(0, 3).map((t, ti) => (
                           <span key={ti} className="text-[9px] bg-slate-800 text-slate-400 border border-slate-700 px-1 py-0.5 rounded">{t}</span>
                         ))}
-                        {/* Fallback tag when no other signals fire */}
                         {visibleTags.length === 0 && (
                           <span className="text-[9px] bg-slate-800 text-slate-500 border border-slate-700 px-1 py-0.5 rounded">
                             📊 Model pick #{p.rank}
