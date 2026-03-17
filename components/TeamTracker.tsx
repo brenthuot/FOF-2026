@@ -175,7 +175,7 @@ function getRecommendations(
     const tags: string[] = []
     const positions = p.position.split('/').map(s => s.trim())
 
-    // ESPN edge
+    // ESPN edge — very high edge players suppressed regardless of urgency
     if (p.edge != null) {
       if (p.edge <= -40) {
         boost += 0.18; tags.push('🎯 ESPN target')
@@ -184,8 +184,6 @@ function getRecommendations(
       } else if (p.edge >= 40) {
         const hasUrgency = (p.type === 'P' && pitcherUrgency) || (p.type === 'H' && hitterUrgency)
         const veryHighEdge = p.edge >= 75
-        // Very high edge players get suppressed regardless of urgency —
-        // ESPN won't draft them for many rounds so they can always wait
         if (!hasUrgency || veryHighEdge) {
           const edgePenalty = p.edge >= 100 ? -0.20 : p.edge >= 75 ? -0.12 : -0.05
           boost += edgePenalty
@@ -404,29 +402,39 @@ export default function TeamTracker({ myTeam, ranked, onSelect, onToggleMyRoster
                 <div className="text-xs text-slate-600 py-3 text-center">
                   {needs.hitterSlotsFull && needs.pitcherSlotsFull ? '✅ Roster is full!' : 'No strong recommendations — check the Draft Board.'}
                 </div>
-              ) : recs.map(({ player: p, priority, tags }, i) => (
-                <div key={p.id} onClick={() => onSelect(p)}
-                  className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer hover:brightness-110 transition-all ${priorityStyle[priority]}`}>
-                  <span className="text-slate-600 font-mono text-xs w-4 mt-0.5">{i+1}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <TypeBadge type={p.type} />
-                      <span className="font-medium text-white text-sm">{p.name}</span>
-                      <span className="text-slate-500 text-xs">{p.position}</span>
+              ) : recs.map(({ player: p, priority, tags }, i) => {
+                // Filter out "Can wait" from displayed tags — penalty already did its job
+                const visibleTags = tags.filter(t => !t.includes('Can wait'))
+                return (
+                  <div key={p.id} onClick={() => onSelect(p)}
+                    className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer hover:brightness-110 transition-all ${priorityStyle[priority]}`}>
+                    <span className="text-slate-600 font-mono text-xs w-4 mt-0.5">{i+1}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <TypeBadge type={p.type} />
+                        <span className="font-medium text-white text-sm">{p.name}</span>
+                        <span className="text-slate-500 text-xs">{p.position}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {visibleTags.slice(0, 3).map((t, ti) => (
+                          <span key={ti} className="text-[9px] bg-slate-800 text-slate-400 border border-slate-700 px-1 py-0.5 rounded">{t}</span>
+                        ))}
+                        {/* Fallback tag when no other signals fire */}
+                        {visibleTags.length === 0 && (
+                          <span className="text-[9px] bg-slate-800 text-slate-500 border border-slate-700 px-1 py-0.5 rounded">
+                            📊 Model pick #{p.rank}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {tags.slice(0,3).map((t,ti) => (
-                        <span key={ti} className="text-[9px] bg-slate-800 text-slate-400 border border-slate-700 px-1 py-0.5 rounded">{t}</span>
-                      ))}
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-xs font-mono text-blue-300 font-bold">#{p.rank}</div>
+                      <div className={`text-[10px] font-mono ${edgeColor(p.edge)}`}>{p.edge!=null?(p.edge>0?`+${p.edge}`:p.edge):'—'} edge</div>
+                      <div className="text-[9px] text-slate-600 mt-0.5">BLND {p.blnd.toFixed(1)}</div>
                     </div>
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <div className="text-xs font-mono text-blue-300 font-bold">#{p.rank}</div>
-                    <div className={`text-[10px] font-mono ${edgeColor(p.edge)}`}>{p.edge!=null?(p.edge>0?`+${p.edge}`:p.edge):'—'} edge</div>
-                    <div className="text-[9px] text-slate-600 mt-0.5">BLND {p.blnd.toFixed(1)}</div>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </section>
 
