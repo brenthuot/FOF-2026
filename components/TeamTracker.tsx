@@ -3,7 +3,6 @@ import { useMemo } from 'react'
 import type { ScoredPlayer } from '@/lib/types'
 import { TypeBadge, edgeColor } from './PlayerRow'
 
-// ── Roster slot definitions in display order ──────────────────────────────────
 const DISPLAY_SLOTS: { label: string; slotPos: string[]; type: 'H'|'P'|'ANY'; count: number }[] = [
   { label: 'C',    slotPos: ['C'],                         type: 'H', count: 1 },
   { label: '1B',   slotPos: ['1B'],                        type: 'H', count: 1 },
@@ -17,9 +16,7 @@ const DISPLAY_SLOTS: { label: string; slotPos: string[]; type: 'H'|'P'|'ANY'; co
   { label: 'BN',   slotPos: ['SP','RP'],                   type: 'P', count: 2 },
 ]
 
-// For recommendation / needs analysis
 const ROSTER_SLOTS = DISPLAY_SLOTS
-
 const EARLY_ROUND_END = 5
 const MID_ROUND_END   = 12
 
@@ -34,7 +31,6 @@ interface Props {
   draftPick: number
 }
 
-// ── Assign players to display slots ──────────────────────────────────────────
 interface AssignedSlot {
   label: string
   player: ScoredPlayer | null
@@ -43,10 +39,8 @@ interface AssignedSlot {
 function assignToSlots(myTeam: ScoredPlayer[]): AssignedSlot[] {
   const assigned: AssignedSlot[] = []
   const used = new Set<string>()
-
   for (const slotDef of DISPLAY_SLOTS) {
     for (let i = 0; i < slotDef.count; i++) {
-      // Find best available player for this slot
       const candidate = myTeam.find(p => {
         if (used.has(p.id)) return false
         if (slotDef.type === 'H' && p.type !== 'H') return false
@@ -54,12 +48,10 @@ function assignToSlots(myTeam: ScoredPlayer[]): AssignedSlot[] {
         const positions = p.position.split('/').map(s => s.trim())
         return positions.some(pos => slotDef.slotPos.includes(pos))
       }) ?? null
-
       if (candidate) used.add(candidate.id)
       assigned.push({ label: slotDef.label, player: candidate })
     }
   }
-
   return assigned
 }
 
@@ -113,7 +105,7 @@ function analyzeNeeds(myTeam: ScoredPlayer[]) {
     .filter(s => filledSlots[s.label] < s.count)
     .map(s => ({ label: s.label, urgent: s.label !== 'BN' && s.label !== 'UT' }))
 
-  const hitterSlotsFull = !openSlots.some(s => ['C','1B','2B','3B','SS','OF','UT'].includes(s.label))
+  const hitterSlotsFull  = !openSlots.some(s => ['C','1B','2B','3B','SS','OF','UT'].includes(s.label))
   const pitcherSlotsFull = !openSlots.some(s => ['RP','P','BN'].includes(s.label))
   const utilOpen = filledSlots['UT'] < 2
 
@@ -170,6 +162,12 @@ function getRecommendations(
   const scarcity = computeScarcity(available)
   const recs: { player: ScoredPlayer; priority: 'high'|'med'|'low'; score: number; tags: string[] }[] = []
 
+  // Count open slots by type to determine urgency balance
+  const openHitterSlots  = needs.openSlots.filter(s => ['C','1B','2B','3B','SS','OF','UT'].includes(s.label)).length
+  const openPitcherSlots = needs.openSlots.filter(s => ['SP/RP','RP','P','BN'].includes(s.label)).length
+  const hitterUrgency    = openHitterSlots > openPitcherSlots + 2
+  const pitcherUrgency   = openPitcherSlots > openHitterSlots + 2
+
   for (const p of available.slice(0, 300)) {
     if (!playerCanFit(p, needs)) continue
 
@@ -178,12 +176,14 @@ function getRecommendations(
     const tags: string[] = []
     const positions = p.position.split('/').map(s => s.trim())
 
+    // ESPN edge
     if (p.edge != null) {
-      if (p.edge <= -40)       { boost += 0.18; tags.push('🎯 ESPN target') }
-      else if (p.edge <= -20)  { boost += 0.10; tags.push('⚡ Draft soon') }
-      else if (p.edge >= 40)   { boost -= 0.05; tags.push('⏳ Can wait') }
+      if (p.edge <= -40)      { boost += 0.18; tags.push('🎯 ESPN target') }
+      else if (p.edge <= -20) { boost += 0.10; tags.push('⚡ Draft soon') }
+      else if (p.edge >= 40)  { boost -= 0.05; tags.push('⏳ Can wait') }
     }
 
+    // Slot filling
     const fillsUrgent = needs.openSlots.some(
       s => s.urgent && ROSTER_SLOTS.find(r => r.label === s.label)?.slotPos.some(pos => positions.includes(pos))
     )
@@ -193,9 +193,22 @@ function getRecommendations(
       tags.push(`📋 Fills ${positions[0]} slot`)
     }
     if (p.type === 'H' && !fillsUrgent && needs.utilOpen) tags.push('🔀 UT only')
-    if (p.type === 'H' && needs.needsHitter  && phase !== 'early') { boost += 0.08; if (priority === 'low') priority = 'med' }
-    if (p.type === 'P' && needs.needsPitcher && phase !== 'early') { boost += 0.08; if (priority === 'low') priority = 'med' }
 
+    // Type balance — with urgency awareness
+    if (p.type === 'H' && needs.needsHitter && phase !== 'early') {
+      const hBoost = hitterUrgency ? 0.30 : 0.08
+      boost += hBoost
+      if (priority === 'low') priority = hitterUrgency ? 'high' : 'med'
+      if (pitcherUrgency) boost -= 0.20
+    }
+    if (p.type === 'P' && needs.needsPitcher && phase !== 'early') {
+      const pBoost = pitcherUrgency ? 0.30 : 0.08
+      boost += pBoost
+      if (priority === 'low') priority = pitcherUrgency ? 'high' : 'med'
+      if (hitterUrgency) boost -= 0.20
+    }
+
+    // Category needs
     const catScale = phase === 'late' ? 1.5 : phase === 'mid' ? 1.0 : 0.3
     if (p.type === 'H') {
       if (needs.weakBatCats.includes('SB')  && (p.stats.sb??0)  > (phase==='late'?15:18)) { boost += 0.12*catScale; tags.push('💨 SB'); if (priority==='low') priority='med' }
@@ -209,6 +222,8 @@ function getRecommendations(
       if (needs.weakPitCats.includes('ERA')  && (p.stats.era??0)  < (phase==='late'?3.70:3.50)) { boost += 0.06*catScale; tags.push('📉 ERA') }
       if (needs.weakPitCats.includes('WHIP') && (p.stats.whip??0) < (phase==='late'?1.20:1.15)) { boost += 0.06*catScale; tags.push('📉 WHIP') }
     }
+
+    // Positional scarcity
     for (const pos of positions) {
       const sb = positionScarcityBoost(pos, scarcity)
       if (sb > 0) { boost += sb; tags.push(`⚠️ ${pos} scarce (${scarcity[pos]??0} left)`); if (priority==='low') priority='med' }
@@ -218,13 +233,13 @@ function getRecommendations(
       recs.push({ player: p, priority, score: p.finalScore + boost, tags })
     }
   }
+
   return recs.sort((a, b) => {
     const scoreDiff = b.score - a.score
-    // If within 0.02, prefer player ESPN will take sooner (more negative edge)
     if (Math.abs(scoreDiff) < 0.02) {
       const aEdge = a.player.edge ?? 999
       const bEdge = b.player.edge ?? 999
-      return aEdge - bEdge  // more negative edge = drafted sooner = higher priority
+      return aEdge - bEdge
     }
     return scoreDiff
   }).slice(0, topN)
@@ -254,7 +269,6 @@ function PhaseLabel({ pick }: { pick: number }) {
   return <span className={`text-[10px] px-2 py-0.5 rounded border ${styles[phase]}`}>{labels[phase]}</span>
 }
 
-// ── Slot color by position group ──────────────────────────────────────────────
 function slotLabelColor(label: string): string {
   if (['C','1B','2B','3B','SS'].includes(label)) return 'text-emerald-400'
   if (label === 'OF') return 'text-emerald-300'
@@ -266,23 +280,26 @@ function slotLabelColor(label: string): string {
 }
 
 export default function TeamTracker({ myTeam, ranked, onSelect, onToggleMyRoster, draftPick }: Props) {
-  const available   = useMemo(() => ranked.filter(p => !p.drafted), [ranked])
-  const needs       = useMemo(() => analyzeNeeds(myTeam), [myTeam])
-  const recs        = useMemo(() => getRecommendations(available, needs, draftPick), [available, needs, draftPick])
+  const available     = useMemo(() => ranked.filter(p => !p.drafted), [ranked])
+  const needs         = useMemo(() => analyzeNeeds(myTeam), [myTeam])
+  const recs          = useMemo(() => getRecommendations(available, needs, draftPick), [available, needs, draftPick])
   const assignedSlots = useMemo(() => assignToSlots(myTeam), [myTeam])
-  const hitters     = myTeam.filter(p => p.type === 'H')
-  const pitchers    = myTeam.filter(p => p.type === 'P')
+  const hitters       = myTeam.filter(p => p.type === 'H')
+  const pitchers      = myTeam.filter(p => p.type === 'P')
 
   const batTotals = useMemo(() => ({
-    R: hitters.reduce((s,p)=>s+(p.stats.r??0),0), HR: hitters.reduce((s,p)=>s+(p.stats.hr??0),0),
-    RBI: hitters.reduce((s,p)=>s+(p.stats.rbi??0),0), SB: hitters.reduce((s,p)=>s+(p.stats.sb??0),0),
+    R:   hitters.reduce((s,p)=>s+(p.stats.r??0),0),
+    HR:  hitters.reduce((s,p)=>s+(p.stats.hr??0),0),
+    RBI: hitters.reduce((s,p)=>s+(p.stats.rbi??0),0),
+    SB:  hitters.reduce((s,p)=>s+(p.stats.sb??0),0),
     OPS: hitters.length ? hitters.reduce((s,p)=>s+(p.stats.ops??0),0)/hitters.length : 0,
   }), [hitters])
 
   const pitTotals = useMemo(() => ({
-    K: pitchers.reduce((s,p)=>s+(p.stats.k??0),0), QS: pitchers.reduce((s,p)=>s+(p.stats.qs??0),0),
-    SV: pitchers.reduce((s,p)=>s+(p.stats.sv??0),0),
-    ERA: pitchers.length ? pitchers.reduce((s,p)=>s+(p.stats.era??0),0)/pitchers.length : 0,
+    K:    pitchers.reduce((s,p)=>s+(p.stats.k??0),0),
+    QS:   pitchers.reduce((s,p)=>s+(p.stats.qs??0),0),
+    SV:   pitchers.reduce((s,p)=>s+(p.stats.sv??0),0),
+    ERA:  pitchers.length ? pitchers.reduce((s,p)=>s+(p.stats.era??0),0)/pitchers.length : 0,
     WHIP: pitchers.length ? pitchers.reduce((s,p)=>s+(p.stats.whip??0),0)/pitchers.length : 0,
   }), [pitchers])
 
@@ -294,7 +311,6 @@ export default function TeamTracker({ myTeam, ranked, onSelect, onToggleMyRoster
 
   return (
     <div className="h-full overflow-y-auto p-5 space-y-6">
-      {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-white">My Team</h1>
@@ -315,7 +331,6 @@ export default function TeamTracker({ myTeam, ranked, onSelect, onToggleMyRoster
         </div>
       ) : (
         <>
-          {/* Recommendations */}
           <section>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-500">🎯 Recommended Next Picks</h2>
@@ -352,7 +367,6 @@ export default function TeamTracker({ myTeam, ranked, onSelect, onToggleMyRoster
             </div>
           </section>
 
-          {/* Category needs */}
           {(needs.weakBatCats.length > 0 || needs.weakPitCats.length > 0) && (
             <section>
               <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-2">Category Needs</h2>
@@ -363,7 +377,6 @@ export default function TeamTracker({ myTeam, ranked, onSelect, onToggleMyRoster
             </section>
           )}
 
-          {/* Category bars */}
           <section className="grid grid-cols-2 gap-4">
             <div className="bg-slate-800/30 rounded-lg p-3 space-y-2">
               <div className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wide mb-2">Batting</div>
@@ -383,15 +396,11 @@ export default function TeamTracker({ myTeam, ranked, onSelect, onToggleMyRoster
             </div>
           </section>
 
-          {/* Roster by position */}
           <section>
-            <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">
-              Roster ({myTeam.length}/21)
-            </h2>
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">Roster ({myTeam.length}/21)</h2>
             <div className="space-y-0.5">
               {assignedSlots.map((slot, i) => (
                 <div key={i} className={`flex items-center gap-2 px-2 py-1.5 rounded ${slot.player ? 'hover:bg-slate-800/40' : 'opacity-40'}`}>
-                  {/* Slot label */}
                   <span className={`text-[10px] font-bold w-8 text-right flex-shrink-0 ${slotLabelColor(slot.label)}`}>
                     {slot.label}
                   </span>
