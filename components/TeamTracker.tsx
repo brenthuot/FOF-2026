@@ -179,9 +179,9 @@ function getRecommendations(
     const positions = p.position.split('/').map(s => s.trim())
 
     if (p.edge != null) {
-      if (p.edge >= 40)       { boost += 0.18; tags.push('🔥 Big sleeper') }
-      else if (p.edge >= 20)  { boost += 0.10; tags.push('📈 Sleeper') }
-      else if (p.edge <= -30) { boost -= 0.10; tags.push('📉 ESPN fade') }
+      if (p.edge <= -40)       { boost += 0.18; tags.push('🎯 ESPN target') }
+      else if (p.edge <= -20)  { boost += 0.10; tags.push('⚡ Draft soon') }
+      else if (p.edge >= 40)   { boost -= 0.05; tags.push('⏳ Can wait') }
     }
 
     const fillsUrgent = needs.openSlots.some(
