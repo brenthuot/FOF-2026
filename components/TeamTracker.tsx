@@ -9,12 +9,11 @@ const ROSTER_SLOTS: { label: string; pos: string[]; count: number }[] = [
   { label: '2B',   pos: ['2B'],                        count: 1 },
   { label: '3B',   pos: ['3B'],                        count: 1 },
   { label: 'SS',   pos: ['SS'],                        count: 1 },
-  { label: 'OF',   pos: ['OF'],                        count: 3 },
-  { label: 'UTIL', pos: ['1B','2B','3B','SS','OF','C'],count: 1 },
-  { label: 'SP',   pos: ['SP'],                        count: 3 },
+  { label: 'OF',   pos: ['OF'],                        count: 5 },
+  { label: 'UTIL', pos: ['C','1B','2B','3B','SS','OF'],count: 2 },
+  { label: 'SP/RP',pos: ['SP','RP'],                   count: 7 },
   { label: 'RP',   pos: ['RP'],                        count: 2 },
-  { label: 'P',    pos: ['SP','RP'],                   count: 2 },
-  { label: 'BN',   pos: ['C','1B','2B','3B','SS','OF','SP','RP'], count: 3 },
+  { label: 'BN',   pos: ['SP','RP'],                   count: 2 },
 ]
 
 const EARLY_ROUND_END = 5
@@ -62,36 +61,90 @@ function positionScarcityBoost(pos: string, scarcity: Record<string, number>): n
 function analyzeNeeds(myTeam: ScoredPlayer[]) {
   const hitters  = myTeam.filter(p => p.type === 'H')
   const pitchers = myTeam.filter(p => p.type === 'P')
+
   const filledSlots: Record<string, number> = {}
   for (const slot of ROSTER_SLOTS) filledSlots[slot.label] = 0
+
   for (const p of myTeam) {
     const positions = p.position.split('/').map(s => s.trim())
     for (const slot of ROSTER_SLOTS) {
-      if (filledSlots[slot.label] < slot.count && positions.some(pos => slot.pos.includes(pos))) {
+      if (filledSlots[slot.label] < slot.count &&
+          positions.some(pos => slot.pos.includes(pos))) {
         filledSlots[slot.label]++; break
       }
     }
   }
+
   const openSlots = ROSTER_SLOTS
     .filter(s => filledSlots[s.label] < s.count)
     .map(s => ({ label: s.label, urgent: s.label !== 'BN' && s.label !== 'UTIL' }))
+
+  // Hitter slots: C, 1B, 2B, 3B, SS, OF, UTIL
+  const hitterSlotsFull = !openSlots.some(s =>
+    ['C','1B','2B','3B','SS','OF','UTIL'].includes(s.label)
+  )
+  // Pitcher slots: SP/RP, RP, BN
+  const pitcherSlotsFull = !openSlots.some(s =>
+    ['SP/RP','RP','BN'].includes(s.label)
+  )
+  // UTIL open (hitters only)
+  const utilOpen = filledSlots['UTIL'] < 2
+
+  // Which positions still have open dedicated slots
+  const positionsStillNeeded = new Set<string>()
+  for (const slot of ROSTER_SLOTS) {
+    if (filledSlots[slot.label] < slot.count) {
+      slot.pos.forEach(pos => positionsStillNeeded.add(pos))
+    }
+  }
+
   const weakBatCats: BatCat[] = []
   const weakPitCats: PitCat[] = []
+
   if (hitters.length >= 2) {
-    const hScale = 8 / hitters.length
+    const hScale = 10 / hitters.length  // 10 hitter spots (5 OF + 4 IF + C + 2 UTIL)
     if (hitters.reduce((s,p)=>s+(p.stats.sb??0),0)*hScale < 80)   weakBatCats.push('SB')
     if (hitters.reduce((s,p)=>s+(p.stats.hr??0),0)*hScale < 160)  weakBatCats.push('HR')
     if (hitters.reduce((s,p)=>s+(p.stats.rbi??0),0)*hScale < 500) weakBatCats.push('RBI')
     if (hitters.reduce((s,p)=>s+(p.stats.ops??0),0)/hitters.length < 0.820) weakBatCats.push('OPS')
   }
   if (pitchers.length >= 1) {
-    const pScale = 5 / pitchers.length
+    const pScale = 11 / pitchers.length  // 7 SP/RP + 2 RP + 2 BN
     if (pitchers.reduce((s,p)=>s+(p.stats.sv??0),0)*pScale < 30)  weakPitCats.push('SV')
     if (pitchers.reduce((s,p)=>s+(p.stats.qs??0),0)*pScale < 50)  weakPitCats.push('QS')
     if (pitchers.reduce((s,p)=>s+(p.stats.era??0),0)/pitchers.length > 3.80)  weakPitCats.push('ERA')
     if (pitchers.reduce((s,p)=>s+(p.stats.whip??0),0)/pitchers.length > 1.22) weakPitCats.push('WHIP')
   }
-  return { needsHitter: hitters.length < 8, needsPitcher: pitchers.length < 5, weakBatCats, weakPitCats, filledSlots, openSlots }
+
+  return {
+    needsHitter:  hitters.length < 10,
+    needsPitcher: pitchers.length < 11,
+    hitterSlotsFull,
+    pitcherSlotsFull,
+    utilOpen,
+    positionsStillNeeded,
+    weakBatCats,
+    weakPitCats,
+    filledSlots,
+    openSlots,
+  }
+}
+
+function playerCanFit(p: ScoredPlayer, needs: ReturnType<typeof analyzeNeeds>): boolean {
+  const positions = p.position.split('/').map(s => s.trim())
+
+  if (p.type === 'P') {
+    return !needs.pitcherSlotsFull
+  }
+
+  // Hitter: needs open dedicated slot (C/1B/2B/3B/SS/OF) or open UTIL
+  const hasOpenDedicatedSlot = positions.some(pos =>
+    needs.positionsStillNeeded.has(pos) &&
+    ['C','1B','2B','3B','SS','OF'].includes(pos)
+  )
+  if (hasOpenDedicatedSlot) return true
+  if (needs.utilOpen) return true
+  return false
 }
 
 function getRecommendations(
@@ -105,17 +158,21 @@ function getRecommendations(
   const recs: { player: ScoredPlayer; priority: 'high'|'med'|'low'; score: number; tags: string[] }[] = []
 
   for (const p of available.slice(0, 300)) {
+    if (!playerCanFit(p, needs)) continue
+
     let priority: 'high'|'med'|'low' = 'low'
     let boost = 0
     const tags: string[] = []
     const positions = p.position.split('/').map(s => s.trim())
 
+    // ESPN edge
     if (p.edge != null) {
       if (p.edge >= 40)       { boost += 0.18; tags.push('🔥 Big sleeper') }
       else if (p.edge >= 20)  { boost += 0.10; tags.push('📈 Sleeper') }
       else if (p.edge <= -30) { boost -= 0.10; tags.push('📉 ESPN fade') }
     }
 
+    // Slot filling
     const fillsUrgent = needs.openSlots.some(
       s => s.urgent && ROSTER_SLOTS.find(r => r.label === s.label)?.pos.some(pos => positions.includes(pos))
     )
@@ -125,9 +182,16 @@ function getRecommendations(
       tags.push(`📋 Fills ${positions[0]} slot`)
     }
 
+    // UTIL fallback tag
+    if (p.type === 'H' && !fillsUrgent && needs.utilOpen) {
+      tags.push('🔀 UTIL only')
+    }
+
+    // Type balance
     if (p.type === 'H' && needs.needsHitter  && phase !== 'early') { boost += 0.08; if (priority === 'low') priority = 'med' }
     if (p.type === 'P' && needs.needsPitcher && phase !== 'early') { boost += 0.08; if (priority === 'low') priority = 'med' }
 
+    // Category needs
     const catScale = phase === 'late' ? 1.5 : phase === 'mid' ? 1.0 : 0.3
     if (p.type === 'H') {
       if (needs.weakBatCats.includes('SB')  && (p.stats.sb??0)  > (phase==='late'?15:18)) { boost += 0.12*catScale; tags.push('💨 SB'); if (priority==='low') priority='med' }
@@ -136,12 +200,13 @@ function getRecommendations(
       if (needs.weakBatCats.includes('OPS') && (p.stats.ops??0) > 0.830)                 { boost += 0.06*catScale; tags.push('📊 OPS') }
     }
     if (p.type === 'P') {
-      if (needs.weakPitCats.includes('SV')   && (p.stats.sv??0)   > (phase==='late'?10:12))   { boost += 0.12*catScale; tags.push('🔒 SV'); if (priority==='low') priority='med' }
-      if (needs.weakPitCats.includes('QS')   && (p.stats.qs??0)   > (phase==='late'?8:10))    { boost += 0.08*catScale; tags.push('✅ QS') }
+      if (needs.weakPitCats.includes('SV')   && (p.stats.sv??0)   > (phase==='late'?10:12))     { boost += 0.12*catScale; tags.push('🔒 SV'); if (priority==='low') priority='med' }
+      if (needs.weakPitCats.includes('QS')   && (p.stats.qs??0)   > (phase==='late'?8:10))      { boost += 0.08*catScale; tags.push('✅ QS') }
       if (needs.weakPitCats.includes('ERA')  && (p.stats.era??0)  < (phase==='late'?3.70:3.50)) { boost += 0.06*catScale; tags.push('📉 ERA') }
       if (needs.weakPitCats.includes('WHIP') && (p.stats.whip??0) < (phase==='late'?1.20:1.15)) { boost += 0.06*catScale; tags.push('📉 WHIP') }
     }
 
+    // Positional scarcity
     for (const pos of positions) {
       const sb = positionScarcityBoost(pos, scarcity)
       if (sb > 0) {
@@ -237,11 +302,15 @@ export default function TeamTracker({ myTeam, ranked, onSelect, onToggleMyRoster
           <section>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-500">🎯 Recommended Next Picks</h2>
-              <span className="text-[10px] text-slate-600">Top 300 · Edge-weighted · Scarcity-aware</span>
+              <span className="text-[10px] text-slate-600">Roster-filtered · Edge-weighted · Scarcity-aware</span>
             </div>
             <div className="space-y-2">
               {recs.length === 0 ? (
-                <div className="text-xs text-slate-600 py-4 text-center">No strong recommendations — check the Draft Board directly.</div>
+                <div className="text-xs text-slate-600 py-4 text-center">
+                  {needs.hitterSlotsFull && needs.pitcherSlotsFull
+                    ? '✅ Roster is full!'
+                    : 'No strong recommendations — check the Draft Board.'}
+                </div>
               ) : recs.map(({ player: p, priority, tags }, i) => (
                 <div key={p.id} onClick={() => onSelect(p)}
                   className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer hover:brightness-110 transition-all ${priorityStyle[priority]}`}>
@@ -292,17 +361,17 @@ export default function TeamTracker({ myTeam, ranked, onSelect, onToggleMyRoster
           <section className="grid grid-cols-2 gap-4">
             <div className="bg-slate-800/30 rounded-lg p-3 space-y-2">
               <div className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wide mb-2">Batting</div>
-              <CatBar label="Runs" value={batTotals.R}   maxVal={650} />
-              <CatBar label="HR"   value={batTotals.HR}  maxVal={250} />
-              <CatBar label="RBI"  value={batTotals.RBI} maxVal={600} />
-              <CatBar label="SB"   value={batTotals.SB}  maxVal={150} />
+              <CatBar label="Runs" value={batTotals.R}   maxVal={750} />
+              <CatBar label="HR"   value={batTotals.HR}  maxVal={300} />
+              <CatBar label="RBI"  value={batTotals.RBI} maxVal={700} />
+              <CatBar label="SB"   value={batTotals.SB}  maxVal={175} />
               <CatBar label="OPS"  value={batTotals.OPS} maxVal={1.0} />
             </div>
             <div className="bg-slate-800/30 rounded-lg p-3 space-y-2">
               <div className="text-[10px] font-semibold text-red-600 uppercase tracking-wide mb-2">Pitching</div>
-              <CatBar label="K"    value={pitTotals.K}    maxVal={1400} />
-              <CatBar label="QS"   value={pitTotals.QS}   maxVal={120} />
-              <CatBar label="SV"   value={pitTotals.SV}   maxVal={80} />
+              <CatBar label="K"    value={pitTotals.K}    maxVal={2000} />
+              <CatBar label="QS"   value={pitTotals.QS}   maxVal={180} />
+              <CatBar label="SV"   value={pitTotals.SV}   maxVal={100} />
               <CatBar label="ERA"  value={pitTotals.ERA}  maxVal={5.5} lowerBetter />
               <CatBar label="WHIP" value={pitTotals.WHIP} maxVal={1.6} lowerBetter />
             </div>
