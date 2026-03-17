@@ -175,13 +175,22 @@ function getRecommendations(
     const tags: string[] = []
     const positions = p.position.split('/').map(s => s.trim())
 
-    // ESPN edge — "Can wait" suppressed when there's active urgency for this type
+    // ESPN edge
     if (p.edge != null) {
-      if (p.edge <= -40)      { boost += 0.18; tags.push('🎯 ESPN target') }
-      else if (p.edge <= -20) { boost += 0.10; tags.push('⚡ Draft soon') }
-      else if (p.edge >= 40) {
+      if (p.edge <= -40) {
+        boost += 0.18; tags.push('🎯 ESPN target')
+      } else if (p.edge <= -20) {
+        boost += 0.10; tags.push('⚡ Draft soon')
+      } else if (p.edge >= 40) {
         const hasUrgency = (p.type === 'P' && pitcherUrgency) || (p.type === 'H' && hitterUrgency)
-        if (!hasUrgency) { boost -= 0.05; tags.push('⏳ Can wait') }
+        const veryHighEdge = p.edge >= 75
+        // Very high edge players get suppressed regardless of urgency —
+        // ESPN won't draft them for many rounds so they can always wait
+        if (!hasUrgency || veryHighEdge) {
+          const edgePenalty = p.edge >= 100 ? -0.20 : p.edge >= 75 ? -0.12 : -0.05
+          boost += edgePenalty
+          tags.push('⏳ Can wait')
+        }
       }
     }
 
