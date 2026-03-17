@@ -1,5 +1,5 @@
 'use client'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { ScoredPlayer } from '@/lib/types'
 import { TypeBadge, edgeColor } from './PlayerRow'
 
@@ -182,7 +182,7 @@ function getRecommendations(
       else if (p.edge >= 40)  { boost -= 0.05; tags.push('⏳ Can wait') }
     }
 
-    // Slot filling — dampened when the other type is more urgently needed
+    // Slot filling — dampened when other type is more urgent
     const fillsUrgent = needs.openSlots.some(
       s => s.urgent && ROSTER_SLOTS.find(r => r.label === s.label)?.slotPos.some(pos => positions.includes(pos))
     )
@@ -249,18 +249,74 @@ function getRecommendations(
     .map(({ player, priority, tags }) => ({ player, priority, tags }))
 }
 
-function CatBar({ label, value, maxVal, lowerBetter }: { label: string; value: number; maxVal: number; lowerBetter?: boolean }) {
+// ── Category bar with threshold marker ───────────────────────────────────────
+interface CatBarProps {
+  label: string
+  value: number
+  maxVal: number
+  lowerBetter?: boolean
+  threshold?: number  // raw value where warning zone begins
+}
+
+function CatBar({ label, value, maxVal, lowerBetter, threshold }: CatBarProps) {
   const pct = maxVal > 0 ? Math.min(100, (value / maxVal) * 100) : 0
-  const good = lowerBetter ? pct < 60 : pct > 40
+  const threshPct = threshold != null ? Math.min(100, (threshold / maxVal) * 100) : null
+
+  // For lower-is-better: good = below threshold (or no threshold)
+  // For higher-is-better: good = above threshold (or no threshold)
+  const good = threshold != null
+    ? lowerBetter ? value <= threshold : value >= threshold
+    : lowerBetter ? pct < 60 : pct > 40
+
+  const barPct = lowerBetter ? 100 - pct : pct
+  // For lower-is-better bars, marker position is inverted
+  const markerPct = threshPct != null
+    ? lowerBetter ? 100 - threshPct : threshPct
+    : null
+
   return (
     <div className="space-y-0.5">
       <div className="flex justify-between text-[10px]">
         <span className="text-slate-500">{label}</span>
-        <span className={`font-mono ${good ? 'text-emerald-400' : 'text-amber-400'}`}>{lowerBetter ? value.toFixed(2) : value.toFixed(1)}</span>
+        <span className={`font-mono ${good ? 'text-emerald-400' : 'text-amber-400'}`}>
+          {lowerBetter ? value.toFixed(2) : value.toFixed(1)}
+        </span>
       </div>
-      <div className="h-1 bg-slate-800 rounded overflow-hidden">
-        <div className={`h-full rounded transition-all ${good ? 'bg-emerald-500' : 'bg-amber-500'}`} style={{ width: `${lowerBetter ? 100-pct : pct}%` }} />
+      <div className="relative h-1.5 bg-slate-800 rounded overflow-visible">
+        <div
+          className={`h-full rounded transition-all ${good ? 'bg-emerald-500' : 'bg-amber-500'}`}
+          style={{ width: `${barPct}%` }}
+        />
+        {markerPct != null && (
+          <div
+            className="absolute top-1/2 -translate-y-1/2 w-0.5 h-3 bg-white/60 rounded"
+            style={{ left: `${markerPct}%` }}
+            title={`Category need threshold: ${lowerBetter ? `< ${threshold}` : `> ${threshold}`}`}
+          />
+        )}
       </div>
+    </div>
+  )
+}
+
+// ── Bar legend / explainer ────────────────────────────────────────────────────
+function BarLegend() {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="text-[10px]">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="text-slate-600 hover:text-slate-400 transition-colors underline underline-offset-2">
+        How to read these bars {open ? '▲' : '▼'}
+      </button>
+      {open && (
+        <div className="mt-2 bg-slate-800/60 border border-slate-700 rounded-lg p-3 space-y-1.5 text-slate-400 leading-relaxed">
+          <p><span className="text-emerald-400">Green bar</span> = at or above target. <span className="text-amber-400">Amber bar</span> = below target.</p>
+          <p>The <span className="text-white/60 font-semibold">white line marker</span> on each bar shows the minimum threshold for that category. If your bar hasn&apos;t reached the marker, the category is flagged as a need and recommendations will boost players who address it.</p>
+          <p>For <span className="text-red-400">ERA and WHIP</span> the bar is inverted — a shorter bar means a lower (better) value. The marker shows the maximum acceptable value before it becomes a weakness.</p>
+          <p className="text-slate-600">Thresholds are projected to a full roster using a scaling factor, so early in the draft the bars will fluctuate more than late.</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -384,20 +440,22 @@ export default function TeamTracker({ myTeam, ranked, onSelect, onToggleMyRoster
             <div className="bg-slate-800/30 rounded-lg p-3 space-y-2">
               <div className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wide mb-2">Batting</div>
               <CatBar label="Runs" value={batTotals.R}   maxVal={750} />
-              <CatBar label="HR"   value={batTotals.HR}  maxVal={300} />
-              <CatBar label="RBI"  value={batTotals.RBI} maxVal={700} />
-              <CatBar label="SB"   value={batTotals.SB}  maxVal={175} />
-              <CatBar label="OPS"  value={batTotals.OPS} maxVal={1.0} />
+              <CatBar label="HR"   value={batTotals.HR}  maxVal={300} threshold={160} />
+              <CatBar label="RBI"  value={batTotals.RBI} maxVal={700} threshold={500} />
+              <CatBar label="SB"   value={batTotals.SB}  maxVal={175} threshold={80} />
+              <CatBar label="OPS"  value={batTotals.OPS} maxVal={1.0} threshold={0.820} />
             </div>
             <div className="bg-slate-800/30 rounded-lg p-3 space-y-2">
               <div className="text-[10px] font-semibold text-red-600 uppercase tracking-wide mb-2">Pitching</div>
               <CatBar label="K"    value={pitTotals.K}    maxVal={2000} />
-              <CatBar label="QS"   value={pitTotals.QS}   maxVal={180} />
-              <CatBar label="SV"   value={pitTotals.SV}   maxVal={100} />
-              <CatBar label="ERA"  value={pitTotals.ERA}  maxVal={5.5} lowerBetter />
-              <CatBar label="WHIP" value={pitTotals.WHIP} maxVal={1.6} lowerBetter />
+              <CatBar label="QS"   value={pitTotals.QS}   maxVal={180}  threshold={50} />
+              <CatBar label="SV"   value={pitTotals.SV}   maxVal={100}  threshold={30} />
+              <CatBar label="ERA"  value={pitTotals.ERA}  maxVal={5.5}  threshold={3.80} lowerBetter />
+              <CatBar label="WHIP" value={pitTotals.WHIP} maxVal={1.6}  threshold={1.22} lowerBetter />
             </div>
           </section>
+
+          <BarLegend />
 
           <section>
             <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">Roster ({myTeam.length}/21)</h2>
