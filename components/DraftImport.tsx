@@ -11,36 +11,71 @@ interface Props {
 
 const MY_TEAM = 'Team Huot'
 
-function parseAbbrevName(abbrev: string): { initial: string; lastName: string } {
-  const parts = abbrev.trim().split(/\.\s+/)
-  if (parts.length >= 2) {
-    return { initial: parts[0].trim().toUpperCase(), lastName: parts.slice(1).join(' ').trim().toLowerCase() }
-  }
-  return { initial: '', lastName: abbrev.trim().toLowerCase() }
+// Known MLB team codes for validation
+const MLB_TEAMS = new Set([
+  'ATL','BOS','NYY','NYM','PHI','WSN','MIA','ATH','HOU','TEX',
+  'LAD','SFG','SDP','ARI','COL','CHC','STL','MIL','CIN','PIT',
+  'CLE','MIN','CHW','DET','KCR','TBR','BAL','TOR','BOS','SEA',
+  'LAA','OAK','ATH','LAN','SLN','CHA','DET','MIN','CLE','MIA',
+])
+
+// Known fantasy positions
+const POSITIONS = new Set(['SP','RP','P','C','1B','2B','3B','SS','OF','DH','UTIL','IF','OF'])
+
+function stripAccents(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 }
 
-function matchPlayer(abbrev: string, players: ScoredPlayer[]): ScoredPlayer | null {
-  const { initial, lastName } = parseAbbrevName(abbrev)
-  if (!lastName) return null
-  let best: ScoredPlayer | null = null
-  let bestScore = 0
-  for (const p of players) {
-    const nameParts = p.name.trim().split(/\s+/)
-    const pFirst = nameParts[0]?.toUpperCase() ?? ''
-    const suffixes = ['JR.', 'SR.', 'II', 'III', 'IV']
-    let lastIdx = nameParts.length - 1
-    while (lastIdx > 0 && suffixes.includes(nameParts[lastIdx].toUpperCase())) lastIdx--
-    const pLast = nameParts[lastIdx]?.toLowerCase() ?? ''
-    const lastMatch = pLast === lastName || pLast.includes(lastName) || lastName.includes(pLast)
-    if (!lastMatch) continue
-    let score = 0
-    if (pLast === lastName) score += 10
-    else if (pLast.startsWith(lastName) || lastName.startsWith(pLast)) score += 6
-    else score += 3
-    if (initial && pFirst.startsWith(initial)) score += 5
-    if (score > bestScore) { bestScore = score; best = p }
+// Parse "F. LastName" → { initial, lastName }
+function parseAbbrev(abbrev: string): { initial: string; lastName: string } {
+  const trimmed = abbrev.trim()
+  // Pattern: "X. Something" or "X.Y. Something"
+  const m = trimmed.match(/^([A-Z])\.(?:[A-Z]\.)?\s+(.+)$/i)
+  if (m) {
+    return { initial: m[1].toUpperCase(), lastName: m[2].trim() }
   }
-  return bestScore >= 3 ? best : null
+  // No initial — just a last name fragment
+  return { initial: '', lastName: trimmed }
+}
+
+// Match abbreviated name to a player — strict initial matching when ambiguous
+function matchPlayer(abbrev: string, players: ScoredPlayer[]): ScoredPlayer | null {
+  const { initial, lastName } = parseAbbrev(abbrev)
+  if (!lastName) return null
+
+  const lowerLast = stripAccents(lastName)
+
+  // Find all players whose last name matches
+  const candidates = players.filter(p => {
+    const parts = p.name.trim().split(/\s+/)
+    // Remove suffixes
+    const suffixes = ['jr.','sr.','ii','iii','iv']
+    let lastIdx = parts.length - 1
+    while (lastIdx > 0 && suffixes.includes(parts[lastIdx].toLowerCase())) lastIdx--
+    const pLast = stripAccents(parts[lastIdx] ?? '')
+    return pLast === lowerLast || pLast.startsWith(lowerLast) || lowerLast.startsWith(pLast)
+  })
+
+  if (candidates.length === 0) return null
+
+  // If only one candidate, return it (even without initial match)
+  if (candidates.length === 1) return candidates[0]
+
+  // Multiple candidates — initial MUST match
+  if (initial) {
+    const initialMatches = candidates.filter(p => {
+      const firstName = p.name.trim().split(/\s+/)[0] ?? ''
+      return firstName.toUpperCase().startsWith(initial)
+    })
+    if (initialMatches.length === 1) return initialMatches[0]
+    if (initialMatches.length > 1) {
+      // Still ambiguous — return highest ranked (lowest rank number)
+      return initialMatches.sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999))[0]
+    }
+  }
+
+  // No initial or no initial match — return best by rank
+  return candidates.sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999))[0]
 }
 
 interface ParsedPick {
@@ -56,23 +91,59 @@ interface ParsedPick {
 function parseRound(text: string, players: ScoredPlayer[]): ParsedPick[] {
   const blocks = text.split(/\bEdit\b/gi).map(b => b.trim()).filter(Boolean)
   const picks: ParsedPick[] = []
+
   for (const block of blocks) {
     const lines = block.split('\n').map(l => l.trim()).filter(Boolean)
-    if (lines.length < 5) continue
+    if (lines.length < 3) continue
+
+    // Find round.pick pattern
     let roundPickIdx = -1
     for (let i = 0; i < lines.length; i++) {
       if (/^\d+\.\d+$/.test(lines[i])) { roundPickIdx = i; break }
     }
     if (roundPickIdx < 0) continue
-    const teamName   = lines.slice(0, roundPickIdx).join(' ').trim()
-    const roundPick  = lines[roundPickIdx]
-    const abbrevName = lines[roundPickIdx + 1] ?? ''
-    const position   = lines[roundPickIdx + 2] ?? ''
-    const mlbTeam    = lines[roundPickIdx + 3] ?? ''
-    const isMyPick   = teamName.toLowerCase().includes(MY_TEAM.toLowerCase())
-    const matched    = matchPlayer(abbrevName, players)
+
+    const teamName = lines.slice(0, roundPickIdx).join(' ').trim()
+    const roundPick = lines[roundPickIdx]
+
+    // After round.pick, find the abbreviated player name by looking for "X. LastName" pattern
+    // Then find position and MLB team using known sets
+    let abbrevName = ''
+    let position = ''
+    let mlbTeam = ''
+
+    const remaining = lines.slice(roundPickIdx + 1)
+
+    for (let i = 0; i < remaining.length; i++) {
+      const line = remaining[i]
+      // If it looks like an abbreviated name (has a period and space, or is a name-like string)
+      if (!abbrevName && /^[A-Z]\.\s+\S/.test(line)) {
+        abbrevName = line
+        continue
+      }
+      // If it looks like a position
+      if (!position && POSITIONS.has(line.toUpperCase())) {
+        position = line.toUpperCase()
+        continue
+      }
+      // If it looks like an MLB team (2-3 uppercase letters)
+      if (!mlbTeam && /^[A-Z]{2,3}$/.test(line)) {
+        mlbTeam = line
+        continue
+      }
+    }
+
+    // Fallback: if we didn't find abbrevName via pattern, use first remaining line
+    if (!abbrevName && remaining.length > 0) {
+      abbrevName = remaining[0]
+    }
+
+    const isMyPick = teamName.toLowerCase().includes(MY_TEAM.toLowerCase())
+    const matched = abbrevName ? matchPlayer(abbrevName, players) : null
+
     picks.push({ roundPick, teamName, abbrevName, position, mlbTeam, isMyPick, matched })
   }
+
   return picks
 }
 
@@ -170,7 +241,7 @@ export default function DraftImport({ players, onImport, onClose, totalDrafted }
                     <span className={`flex-1 ${pk.matched ? 'text-white' : 'text-amber-400'}`}>
                       {pk.matched?.name ?? pk.abbrevName}
                     </span>
-                    <span className="text-slate-600 text-[10px]">{pk.position} · {pk.mlbTeam}</span>
+                    <span className="text-slate-600 text-[10px]">{pk.abbrevName} · {pk.position} · {pk.mlbTeam}</span>
                     {!pk.matched && <span className="text-[9px] text-amber-600">no match</span>}
                   </div>
                 ))}
