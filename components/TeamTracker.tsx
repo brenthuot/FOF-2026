@@ -56,8 +56,8 @@ function assignToSlots(myTeam: ScoredPlayer[]): AssignedSlot[] {
 }
 
 function getRoundPhase(pick: number): 'early' | 'mid' | 'late' {
-  if (pick <= EARLY_ROUND_END) return 'early'
-  if (pick <= MID_ROUND_END)   return 'mid'
+  if (pick <= EARLY_ROUND_END * 10) return 'early'
+  if (pick <= MID_ROUND_END * 10)   return 'mid'
   return 'late'
 }
 
@@ -192,17 +192,31 @@ function getRecommendations(
       }
     }
 
-    // Slot filling — dampened when other type is more urgent
+    // Slot filling — dampened by type urgency AND ESPN buffer
     const fillsUrgent = needs.openSlots.some(
       s => s.urgent && ROSTER_SLOTS.find(r => r.label === s.label)?.slotPos.some(pos => positions.includes(pos))
     )
     if (fillsUrgent) {
       const slotBoost = phase === 'early' ? 0.15 : phase === 'mid' ? 0.25 : 0.20
-      const dampened = (p.type === 'P' && hitterUrgency) ? slotBoost * 0.3
-                     : (p.type === 'H' && pitcherUrgency) ? slotBoost * 0.3
-                     : slotBoost
-      boost += dampened
-      priority = 'high'
+
+      // Dampen if other type is more urgently needed
+      const typeDampened = (p.type === 'P' && hitterUrgency) ? slotBoost * 0.3
+                         : (p.type === 'H' && pitcherUrgency) ? slotBoost * 0.3
+                         : slotBoost
+
+      // Dampen further if ESPN won't take this player for many picks
+      const espnBuffer = p.espnRank != null ? p.espnRank - draftPick : 0
+      const espnDampened = espnBuffer > 30 ? typeDampened * 0.4
+                         : espnBuffer > 15 ? typeDampened * 0.7
+                         : typeDampened
+
+      boost += espnDampened
+
+      // Priority reflects genuine urgency — if ESPN won't take them for 30 picks, it's not urgent
+      if (espnBuffer > 30)      priority = 'low'
+      else if (espnBuffer > 15) priority = 'med'
+      else                      priority = 'high'
+
       tags.push(`📋 Fills ${positions[0]} slot`)
     }
     if (p.type === 'H' && !fillsUrgent && needs.utilOpen) tags.push('🔀 UT only')
