@@ -162,11 +162,10 @@ function getRecommendations(
   const scarcity = computeScarcity(available)
   const recs: { player: ScoredPlayer; priority: 'high'|'med'|'low'; score: number; tags: string[] }[] = []
 
-  // Count open slots by type to determine urgency balance
   const openHitterSlots  = needs.openSlots.filter(s => ['C','1B','2B','3B','SS','OF','UT'].includes(s.label)).length
   const openPitcherSlots = needs.openSlots.filter(s => ['SP/RP','RP','P','BN'].includes(s.label)).length
-  const hitterUrgency    = openHitterSlots > openPitcherSlots + 2
-  const pitcherUrgency   = openPitcherSlots > openHitterSlots + 2
+  const hitterUrgency    = openHitterSlots > openPitcherSlots
+  const pitcherUrgency   = openPitcherSlots > openHitterSlots
 
   for (const p of available.slice(0, 300)) {
     if (!playerCanFit(p, needs)) continue
@@ -183,18 +182,22 @@ function getRecommendations(
       else if (p.edge >= 40)  { boost -= 0.05; tags.push('⏳ Can wait') }
     }
 
-    // Slot filling
+    // Slot filling — dampened when the other type is more urgently needed
     const fillsUrgent = needs.openSlots.some(
       s => s.urgent && ROSTER_SLOTS.find(r => r.label === s.label)?.slotPos.some(pos => positions.includes(pos))
     )
     if (fillsUrgent) {
-      boost += phase === 'early' ? 0.15 : phase === 'mid' ? 0.25 : 0.20
+      const slotBoost = phase === 'early' ? 0.15 : phase === 'mid' ? 0.25 : 0.20
+      const dampened = (p.type === 'P' && hitterUrgency) ? slotBoost * 0.3
+                     : (p.type === 'H' && pitcherUrgency) ? slotBoost * 0.3
+                     : slotBoost
+      boost += dampened
       priority = 'high'
       tags.push(`📋 Fills ${positions[0]} slot`)
     }
     if (p.type === 'H' && !fillsUrgent && needs.utilOpen) tags.push('🔀 UT only')
 
-    // Type balance — with urgency awareness
+    // Type balance with urgency
     if (p.type === 'H' && needs.needsHitter && phase !== 'early') {
       const hBoost = hitterUrgency ? 0.30 : 0.08
       boost += hBoost
