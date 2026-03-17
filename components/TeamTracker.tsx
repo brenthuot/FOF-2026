@@ -175,11 +175,14 @@ function getRecommendations(
     const tags: string[] = []
     const positions = p.position.split('/').map(s => s.trim())
 
-    // ESPN edge
+    // ESPN edge — "Can wait" suppressed when there's active urgency for this type
     if (p.edge != null) {
       if (p.edge <= -40)      { boost += 0.18; tags.push('🎯 ESPN target') }
       else if (p.edge <= -20) { boost += 0.10; tags.push('⚡ Draft soon') }
-      else if (p.edge >= 40)  { boost -= 0.05; tags.push('⏳ Can wait') }
+      else if (p.edge >= 40) {
+        const hasUrgency = (p.type === 'P' && pitcherUrgency) || (p.type === 'H' && hitterUrgency)
+        if (!hasUrgency) { boost -= 0.05; tags.push('⏳ Can wait') }
+      }
     }
 
     // Slot filling — dampened when other type is more urgent
@@ -249,27 +252,21 @@ function getRecommendations(
     .map(({ player, priority, tags }) => ({ player, priority, tags }))
 }
 
-// ── Category bar with threshold marker ───────────────────────────────────────
 interface CatBarProps {
   label: string
   value: number
   maxVal: number
   lowerBetter?: boolean
-  threshold?: number  // raw value where warning zone begins
+  threshold?: number
 }
 
 function CatBar({ label, value, maxVal, lowerBetter, threshold }: CatBarProps) {
   const pct = maxVal > 0 ? Math.min(100, (value / maxVal) * 100) : 0
   const threshPct = threshold != null ? Math.min(100, (threshold / maxVal) * 100) : null
-
-  // For lower-is-better: good = below threshold (or no threshold)
-  // For higher-is-better: good = above threshold (or no threshold)
   const good = threshold != null
     ? lowerBetter ? value <= threshold : value >= threshold
     : lowerBetter ? pct < 60 : pct > 40
-
   const barPct = lowerBetter ? 100 - pct : pct
-  // For lower-is-better bars, marker position is inverted
   const markerPct = threshPct != null
     ? lowerBetter ? 100 - threshPct : threshPct
     : null
@@ -291,7 +288,6 @@ function CatBar({ label, value, maxVal, lowerBetter, threshold }: CatBarProps) {
           <div
             className="absolute top-1/2 -translate-y-1/2 w-0.5 h-3 bg-white/60 rounded"
             style={{ left: `${markerPct}%` }}
-            title={`Category need threshold: ${lowerBetter ? `< ${threshold}` : `> ${threshold}`}`}
           />
         )}
       </div>
@@ -299,7 +295,6 @@ function CatBar({ label, value, maxVal, lowerBetter, threshold }: CatBarProps) {
   )
 }
 
-// ── Bar legend / explainer ────────────────────────────────────────────────────
 function BarLegend() {
   const [open, setOpen] = useState(false)
   return (
@@ -312,7 +307,7 @@ function BarLegend() {
       {open && (
         <div className="mt-2 bg-slate-800/60 border border-slate-700 rounded-lg p-3 space-y-1.5 text-slate-400 leading-relaxed">
           <p><span className="text-emerald-400">Green bar</span> = at or above target. <span className="text-amber-400">Amber bar</span> = below target.</p>
-          <p>The <span className="text-white/60 font-semibold">white line marker</span> on each bar shows the minimum threshold for that category. If your bar hasn&apos;t reached the marker, the category is flagged as a need and recommendations will boost players who address it.</p>
+          <p>The <span className="text-white/60 font-semibold">white line marker</span> shows the minimum threshold for that category. If your bar hasn&apos;t reached the marker, the category is flagged as a need and recommendations will boost players who address it.</p>
           <p>For <span className="text-red-400">ERA and WHIP</span> the bar is inverted — a shorter bar means a lower (better) value. The marker shows the maximum acceptable value before it becomes a weakness.</p>
           <p className="text-slate-600">Thresholds are projected to a full roster using a scaling factor, so early in the draft the bars will fluctuate more than late.</p>
         </div>
