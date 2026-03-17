@@ -218,7 +218,16 @@ function getRecommendations(
       recs.push({ player: p, priority, score: p.finalScore + boost, tags })
     }
   }
-  return recs.sort((a,b) => b.score - a.score).slice(0, topN)
+  return recs.sort((a, b) => {
+    const scoreDiff = b.score - a.score
+    // If within 0.02, prefer player ESPN will take sooner (more negative edge)
+    if (Math.abs(scoreDiff) < 0.02) {
+      const aEdge = a.player.edge ?? 999
+      const bEdge = b.player.edge ?? 999
+      return aEdge - bEdge  // more negative edge = drafted sooner = higher priority
+    }
+    return scoreDiff
+  }).slice(0, topN)
     .map(({ player, priority, tags }) => ({ player, priority, tags }))
 }
 
