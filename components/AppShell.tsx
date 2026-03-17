@@ -90,6 +90,7 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
     }
   }, [preDraftedIds])
 
+  // draftedCount excludes the pre-drafted keepers — reflects actual picks made in the live draft
   const draftedCount  = draftedIds.size - preDraftedIds.length
   const myRosterCount = myRosterIds.size
   const myTeam = useMemo(() => ranked.filter(p => myRosterIds.has(p.id)), [ranked, myRosterIds])
@@ -156,7 +157,7 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
           )}
           {activeTab === 'team' && (
             <TeamTracker myTeam={myTeam} ranked={ranked} onSelect={setSelectedPlayer}
-              onToggleMyRoster={toggleMyRoster} draftPick={myRosterCount + 1} />
+              onToggleMyRoster={toggleMyRoster} draftPick={draftedCount + 1} />
           )}
           {activeTab === 'pool' && (
             <FullPool ranked={ranked} onSelect={setSelectedPlayer}
