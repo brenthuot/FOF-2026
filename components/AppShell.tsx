@@ -11,6 +11,7 @@ import ESPNEdgeView from './ESPNEdgeView'
 import PlayerDrawer from './PlayerDrawer'
 import TeamTracker from './TeamTracker'
 import DraftImport from './DraftImport'
+import DraftTargets from './DraftTargets'
 
 type Tab = 'draft' | 'team' | 'pool' | 'diagnostics' | 'edges'
 
@@ -34,6 +35,7 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
   const [selectedPlayer, setSelectedPlayer] = useState<ScoredPlayer | null>(null)
   const [controlsOpen, setControlsOpen]     = useState(true)
   const [showImport, setShowImport]         = useState(false)
+  const [showTargets, setShowTargets]       = useState(false)
 
   const [draftedIds, setDraftedIds] = useState<Set<string>>(
     () => new Set(preDraftedIds)
@@ -92,7 +94,27 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
 
   const draftedCount  = draftedIds.size - preDraftedIds.length
   const myRosterCount = myRosterIds.size
+  const currentRound  = Math.floor(draftedCount / 10) + 1
   const myTeam = useMemo(() => ranked.filter(p => myRosterIds.has(p.id)), [ranked, myRosterIds])
+
+  // Count how many targets are still available past their window — alert badge
+  const targetsAlert = useMemo(() => {
+    const TARGET_IDS = [
+      'elly-de-la-cruz', 'corbin-carroll', 'bobby-witt-jr-',
+      'jazz-chisholm-jr-', 'jackson-chourio', 'cj-abrams',
+      'wyatt-langford', 'jarren-duran', 'pete-crow-armstrong', 'michael-harris-ii',
+    ]
+    const ROUND_MAX: Record<string, number> = {
+      'elly-de-la-cruz': 4, 'corbin-carroll': 5, 'bobby-witt-jr-': 2,
+      'jazz-chisholm-jr-': 7, 'jackson-chourio': 7, 'cj-abrams': 9,
+      'wyatt-langford': 11, 'jarren-duran': 12, 'pete-crow-armstrong': 13, 'michael-harris-ii': 13,
+    }
+    return TARGET_IDS.filter(id =>
+      !draftedIds.has(id) &&
+      !myRosterIds.has(id) &&
+      currentRound > (ROUND_MAX[id] ?? 99)
+    ).length
+  }, [draftedIds, myRosterIds, currentRound])
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#0a1628]">
@@ -125,6 +147,16 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
             ))}
           </nav>
           <div className="flex items-center gap-2 ml-auto">
+            {/* Targets button */}
+            <button onClick={() => setShowTargets(true)}
+              className="relative flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-purple-700 text-white hover:bg-purple-600 transition-colors">
+              🎯 Targets
+              {targetsAlert > 0 && (
+                <span className="absolute -top-1 -right-1 bg-amber-500 text-black text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  {targetsAlert}
+                </span>
+              )}
+            </button>
             <button onClick={() => setShowImport(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-emerald-700 text-white hover:bg-emerald-600 transition-colors">
               📥 Import Round
@@ -182,6 +214,17 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
       {showImport && (
         <DraftImport players={ranked} onImport={handleImport}
           onClose={() => setShowImport(false)} totalDrafted={draftedCount} />
+      )}
+
+      {showTargets && (
+        <DraftTargets
+          ranked={ranked}
+          draftedIds={draftedIds}
+          myRosterIds={myRosterIds}
+          currentRound={currentRound}
+          onSelect={p => { setSelectedPlayer(p); setShowTargets(false) }}
+          onClose={() => setShowTargets(false)}
+        />
       )}
     </div>
   )
