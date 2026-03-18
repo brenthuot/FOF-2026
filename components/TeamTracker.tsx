@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import type { ScoredPlayer } from '@/lib/types'
 import { TypeBadge, edgeColor } from './PlayerRow'
 
-// ── Watchlist — late-round targets ────────────────────────────────────────
+// ── Watchlist ─────────────────────────────────────────────────────────────
 const WATCHLIST_HIGH = new Set([
   'maikel-garcia',
   'geraldo-perdomo',
@@ -16,11 +16,56 @@ const WATCHLIST_NORMAL = new Set([
   'brendan-donovan', 'konnor-griffin', 'kevin-mcgonigle',
 ])
 
-// Players with no ESPN rank — assign a realistic default ADP
-// Prospects like Griffin/McGonigle get 180 so they surface rounds 14-17
+// Target pick windows from 5 mock draft observations
+// [pickMin, pickMax] = real draft range — boost is aggressive inside, small outside
+const TARGET_WINDOWS: Record<string, [number, number]> = {
+  // R5 consistently — picks 42-54 across all drafts
+  'brice-turang':      [40, 60],
+  // R5 consistently — picks 44-49
+  'jarren-duran':      [40, 65],
+  // R7-8 — picks 62-77
+  'maikel-garcia':     [58, 85],
+  // R7-8 — picks 61-74 (tighter than Garcia)
+  'geraldo-perdomo':   [55, 80],
+  // R9-10 — picks 85-96
+  'kyle-stowers':      [80, 110],
+  // R11-12 — picks 103-115
+  'jacob-misiorowski': [98, 130],
+  // R13 — picks 122-129
+  'agust-n-ram-rez':   [118, 145],
+  // R13-14 — picks 125-139
+  'cam-schlittler':    [120, 150],
+  // R13-15 — picks 127-150
+  'emmet-sheehan':     [120, 155],
+  // Wildly inconsistent R9-16 — wide window
+  'trevor-rogers':     [80, 165],
+  // Very consistent R16 — picks 151-155
+  'bubba-chandler':    [145, 165],
+  // Very consistent R19 — picks 189-190
+  'alejandro-kirk':    [182, 200],
+  // R19-23 wide range — picks 185-223
+  'jac-caglianone':    [180, 225],
+  // R20-23 — picks 197-225
+  'addison-barger':    [190, 228],
+  // Very consistent R22 — picks 212-214
+  'jonathan-aranda':   [208, 225],
+  // R22-23 — picks 216-223
+  'sal-stewart':       [210, 228],
+  // Only 1 observation: pick 226
+  'brendan-donovan':   [218, 230],
+  // Always pick 230 — last pick of draft
+  'max-muncy':         [225, 230],
+  // No mock data — estimate R14-19
+  'konnor-griffin':    [130, 190],
+  'kevin-mcgonigle':   [140, 200],
+  'andrew-vaughn':     [160, 215],
+}
+
+// Default ESPN ADP for players without one in the database
 const DEFAULT_ESPN_ADP: Record<string, number> = {
   'konnor-griffin':  180,
-  'kevin-mcgonigle': 180,
+  'kevin-mcgonigle': 195,
+  'andrew-vaughn':   195,
 }
 
 const DISPLAY_SLOTS: { label: string; slotPos: string[]; type: 'H'|'P'|'ANY'; count: number }[] = [
@@ -161,25 +206,65 @@ function analyzeNeeds(myTeam: ScoredPlayer[]) {
   }
 }
 
-// ── FIXED: check player's actual position against each open slot ──────────
 function playerCanFit(p: ScoredPlayer, needs: ReturnType<typeof analyzeNeeds>): boolean {
   const positions = p.position.split('/').map(s => s.trim())
 
   if (p.type === 'P') {
-    // Must match an open pitcher slot's eligible positions exactly
     return needs.openSlots.some(s =>
       ['RP','P','BN'].includes(s.label) &&
       ROSTER_SLOTS.find(r => r.label === s.label)?.slotPos.some(pos => positions.includes(pos))
     )
   }
 
-  // Hitters: dedicated slot or UTIL
   const hasOpenDedicated = positions.some(pos =>
     needs.positionsStillNeeded.has(pos) && ['C','1B','2B','3B','SS','OF'].includes(pos)
   )
   if (hasOpenDedicated) return true
   if (needs.utilOpen) return true
   return false
+}
+
+function getWatchlistBoost(
+  id: string,
+  draftPick: number,
+  isHigh: boolean,
+): { boost: number; tag: string } {
+  const window = TARGET_WINDOWS[id]
+
+  if (window) {
+    const [pickMin, pickMax] = window
+    const inWindow  = draftPick >= pickMin && draftPick <= pickMax
+    const pastWindow = draftPick > pickMax
+
+    if (inWindow) {
+      const windowProgress = (draftPick - pickMin) / Math.max(1, pickMax - pickMin)
+      const boost = isHigh
+        ? 0.25 + windowProgress * 0.15   // +0.25 → +0.40
+        : 0.18 + windowProgress * 0.12   // +0.18 → +0.30
+      return { boost, tag: isHigh ? '⭐⭐ Target now' : '⭐ Target now' }
+    } else if (pastWindow) {
+      const overdue = Math.min(30, draftPick - pickMax)
+      const boost = isHigh
+        ? Math.min(0.48, 0.40 + overdue * 0.003)
+        : Math.min(0.36, 0.30 + overdue * 0.002)
+      return { boost, tag: isHigh ? '⭐⭐ Overdue!' : '⭐ Still available' }
+    } else {
+      // Before window — small nudge proportional to proximity
+      const proximity = draftPick / pickMin
+      const boost = isHigh
+        ? 0.04 + proximity * 0.10
+        : 0.03 + proximity * 0.07
+      return { boost, tag: isHigh ? '⭐⭐ Watchlist' : '⭐ Watchlist' }
+    }
+  }
+
+  // Fallback: urgencyRatio using ESPN ADP
+  const espnADP = DEFAULT_ESPN_ADP[id] ?? 250
+  const urgencyRatio = Math.min(1.5, draftPick / espnADP)
+  const boost = isHigh
+    ? 0.06 + urgencyRatio * 0.18
+    : 0.04 + urgencyRatio * 0.14
+  return { boost, tag: isHigh ? '⭐⭐ Watchlist' : '⭐ Watchlist' }
 }
 
 function getRecommendations(
@@ -197,7 +282,6 @@ function getRecommendations(
   const hitterUrgency    = openHitterSlots > openPitcherSlots
   const pitcherUrgency   = openPitcherSlots > openHitterSlots
 
-  // Always include watchlist players even if ranked beyond top 300
   const ALL_WATCHLIST = new Set([...Array.from(WATCHLIST_HIGH), ...Array.from(WATCHLIST_NORMAL)])
   const top300 = available.slice(0, 300)
   const watchlistExtras = available.slice(300).filter(p => ALL_WATCHLIST.has(p.id))
@@ -284,28 +368,19 @@ function getRecommendations(
       if (sb > 0) { boost += sb; tags.push(`⚠️ ${pos} scarce (${scarcity[pos]??0} left)`); if (priority==='low') priority='med' }
     }
 
-    // Watchlist boost — urgency-ratio based, scales with how close we are to player's ADP
+    // Watchlist boost — target-window based from mock draft observations
     if (phase !== 'early') {
       const isHigh   = WATCHLIST_HIGH.has(p.id)
       const isNormal = WATCHLIST_NORMAL.has(p.id)
       if (isHigh || isNormal) {
-        const espnADP = p.espnRank ?? DEFAULT_ESPN_ADP[p.id] ?? 250
-        // urgencyRatio: 0 = far from ADP, 1.0 = at ADP, >1.0 = overdue
-        const urgencyRatio = Math.min(1.5, draftPick / espnADP)
-
-        const wBoost = isHigh
-          ? 0.06 + (urgencyRatio * 0.18)   // +0.06 far out → +0.33 overdue
-          : 0.04 + (urgencyRatio * 0.14)   // +0.04 far out → +0.25 overdue
-
+        const { boost: wBoost, tag } = getWatchlistBoost(p.id, draftPick, isHigh)
         boost += wBoost
-        tags.push(isHigh ? '⭐⭐ Watchlist' : '⭐ Watchlist')
-
-        // Priority capped at 'med' from watchlist alone — requires slot urgency for 'high'
+        tags.push(tag)
         if (priority === 'low') priority = 'med'
       }
     }
 
-    // Entry gate — watchlist players always enter in mid/late regardless of boost
+    // Entry gate
     const isWatchlist = ALL_WATCHLIST.has(p.id)
     if (
       boost > 0.04 ||
@@ -344,9 +419,7 @@ function CatBar({ label, value, maxVal, lowerBetter, threshold }: CatBarProps) {
     ? lowerBetter ? value <= threshold : value >= threshold
     : lowerBetter ? pct < 60 : pct > 40
   const barPct = lowerBetter ? 100 - pct : pct
-  const markerPct = threshPct != null
-    ? lowerBetter ? 100 - threshPct : threshPct
-    : null
+  const markerPct = threshPct != null ? lowerBetter ? 100 - threshPct : threshPct : null
 
   return (
     <div className="space-y-0.5">
@@ -357,15 +430,11 @@ function CatBar({ label, value, maxVal, lowerBetter, threshold }: CatBarProps) {
         </span>
       </div>
       <div className="relative h-1.5 bg-slate-800 rounded overflow-visible">
-        <div
-          className={`h-full rounded transition-all ${good ? 'bg-emerald-500' : 'bg-amber-500'}`}
-          style={{ width: `${barPct}%` }}
-        />
+        <div className={`h-full rounded transition-all ${good ? 'bg-emerald-500' : 'bg-amber-500'}`}
+          style={{ width: `${barPct}%` }} />
         {markerPct != null && (
-          <div
-            className="absolute top-1/2 -translate-y-1/2 w-0.5 h-3 bg-white/60 rounded"
-            style={{ left: `${markerPct}%` }}
-          />
+          <div className="absolute top-1/2 -translate-y-1/2 w-0.5 h-3 bg-white/60 rounded"
+            style={{ left: `${markerPct}%` }} />
         )}
       </div>
     </div>
@@ -376,17 +445,16 @@ function BarLegend() {
   const [open, setOpen] = useState(false)
   return (
     <div className="text-[10px]">
-      <button
-        onClick={() => setOpen(o => !o)}
+      <button onClick={() => setOpen(o => !o)}
         className="text-slate-600 hover:text-slate-400 transition-colors underline underline-offset-2">
         How to read these bars {open ? '▲' : '▼'}
       </button>
       {open && (
         <div className="mt-2 bg-slate-800/60 border border-slate-700 rounded-lg p-3 space-y-1.5 text-slate-400 leading-relaxed">
           <p><span className="text-emerald-400">Green bar</span> = at or above target. <span className="text-amber-400">Amber bar</span> = below target.</p>
-          <p>The <span className="text-white/60 font-semibold">white line marker</span> shows the minimum threshold for that category. If your bar hasn&apos;t reached the marker, the category is flagged as a need and recommendations will boost players who address it.</p>
-          <p>For <span className="text-red-400">ERA and WHIP</span> the bar is inverted — a shorter bar means a lower (better) value. The marker shows the maximum acceptable value before it becomes a weakness.</p>
-          <p className="text-slate-600">Thresholds are projected to a full roster using a scaling factor, so early in the draft the bars will fluctuate more than late.</p>
+          <p>The <span className="text-white/60 font-semibold">white line marker</span> shows the minimum threshold. If your bar hasn&apos;t reached it, the category is flagged as a need and recommendations will boost players who address it.</p>
+          <p>For <span className="text-red-400">ERA and WHIP</span> the bar is inverted — shorter = lower (better).</p>
+          <p className="text-slate-600">Thresholds scale with roster size so bars fluctuate early in the draft.</p>
         </div>
       )}
     </div>
@@ -489,87 +557,3 @@ export default function TeamTracker({ myTeam, ranked, onSelect, onToggleMyRoster
                           <span key={ti} className="text-[9px] bg-slate-800 text-slate-400 border border-slate-700 px-1 py-0.5 rounded">{t}</span>
                         ))}
                         {visibleTags.length === 0 && (
-                          <span className="text-[9px] bg-slate-800 text-slate-500 border border-slate-700 px-1 py-0.5 rounded">
-                            📊 Model pick #{p.rank}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="text-xs font-mono text-blue-300 font-bold">#{p.rank}</div>
-                      <div className={`text-[10px] font-mono ${edgeColor(p.edge)}`}>{p.edge!=null?(p.edge>0?`+${p.edge}`:p.edge):'—'} edge</div>
-                      <div className="text-[9px] text-slate-600 mt-0.5">BLND {p.blnd.toFixed(1)}</div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </section>
-
-          {(needs.weakBatCats.length > 0 || needs.weakPitCats.length > 0) && (
-            <section>
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-2">Category Needs</h2>
-              <div className="flex flex-wrap gap-1.5">
-                {needs.weakBatCats.map(cat => <span key={cat} className="text-xs px-2 py-1 rounded border bg-emerald-900/30 text-emerald-300 border-emerald-800">⬇ {cat}</span>)}
-                {needs.weakPitCats.map(cat => <span key={cat} className="text-xs px-2 py-1 rounded border bg-red-900/30 text-red-300 border-red-800">⬇ {cat}</span>)}
-              </div>
-            </section>
-          )}
-
-          <section className="grid grid-cols-2 gap-4">
-            <div className="bg-slate-800/30 rounded-lg p-3 space-y-2">
-              <div className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wide mb-2">Batting</div>
-              <CatBar label="Runs" value={batTotals.R}   maxVal={750} />
-              <CatBar label="HR"   value={batTotals.HR}  maxVal={300} threshold={160} />
-              <CatBar label="RBI"  value={batTotals.RBI} maxVal={700} threshold={500} />
-              <CatBar label="SB"   value={batTotals.SB}  maxVal={175} threshold={80} />
-              <CatBar label="OPS"  value={batTotals.OPS} maxVal={1.0} threshold={0.820} />
-            </div>
-            <div className="bg-slate-800/30 rounded-lg p-3 space-y-2">
-              <div className="text-[10px] font-semibold text-red-600 uppercase tracking-wide mb-2">Pitching</div>
-              <CatBar label="K"    value={pitTotals.K}    maxVal={2000} />
-              <CatBar label="QS"   value={pitTotals.QS}   maxVal={180}  threshold={50} />
-              <CatBar label="SV"   value={pitTotals.SV}   maxVal={100}  threshold={30} />
-              <CatBar label="ERA"  value={pitTotals.ERA}  maxVal={5.5}  threshold={3.80} lowerBetter />
-              <CatBar label="WHIP" value={pitTotals.WHIP} maxVal={1.6}  threshold={1.22} lowerBetter />
-            </div>
-          </section>
-
-          <BarLegend />
-
-          <section>
-            <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">Roster ({myTeam.length}/21)</h2>
-            <div className="space-y-0.5">
-              {assignedSlots.map((slot, i) => (
-                <div key={i} className={`flex items-center gap-2 px-2 py-1.5 rounded ${slot.player ? 'hover:bg-slate-800/40' : 'opacity-40'}`}>
-                  <span className={`text-[10px] font-bold w-8 text-right flex-shrink-0 ${slotLabelColor(slot.label)}`}>
-                    {slot.label}
-                  </span>
-                  <div className="w-px h-4 bg-slate-700 flex-shrink-0" />
-                  {slot.player ? (
-                    <div className="flex-1 flex items-center gap-2 cursor-pointer" onClick={() => onSelect(slot.player!)}>
-                      <TypeBadge type={slot.player.type} />
-                      <span className="text-white text-xs font-medium flex-1">{slot.player.name}</span>
-                      <span className="text-slate-500 text-[10px]">{slot.player.position}</span>
-                      <span className="text-slate-600 text-[10px] font-mono">{slot.player.team}</span>
-                      <span className="text-blue-400 font-mono text-[10px]">#{slot.player.rank}</span>
-                      {slot.player.edge != null && slot.player.edge >= 20 && (
-                        <span className="text-[9px] text-emerald-500">+{slot.player.edge}</span>
-                      )}
-                      <button
-                        onClick={e => { e.stopPropagation(); onToggleMyRoster(slot.player!.id) }}
-                        className="text-slate-600 hover:text-red-400 transition-colors text-xs px-1 ml-1"
-                        title="Remove">✕</button>
-                    </div>
-                  ) : (
-                    <span className="text-slate-700 text-xs italic">— empty —</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-        </>
-      )}
-    </div>
-  )
-}
