@@ -16,6 +16,13 @@ const WATCHLIST_NORMAL = new Set([
   'brendan-donovan', 'konnor-griffin', 'kevin-mcgonigle',
 ])
 
+// Players with no ESPN rank — assign a realistic default ADP
+// Prospects like Griffin/McGonigle get 180 so they surface rounds 14-17
+const DEFAULT_ESPN_ADP: Record<string, number> = {
+  'konnor-griffin':  180,
+  'kevin-mcgonigle': 180,
+}
+
 const DISPLAY_SLOTS: { label: string; slotPos: string[]; type: 'H'|'P'|'ANY'; count: number }[] = [
   { label: 'C',    slotPos: ['C'],                         type: 'H', count: 1 },
   { label: '1B',   slotPos: ['1B'],                        type: 'H', count: 1 },
@@ -154,9 +161,19 @@ function analyzeNeeds(myTeam: ScoredPlayer[]) {
   }
 }
 
+// ── FIXED: check player's actual position against each open slot ──────────
 function playerCanFit(p: ScoredPlayer, needs: ReturnType<typeof analyzeNeeds>): boolean {
   const positions = p.position.split('/').map(s => s.trim())
-  if (p.type === 'P') return !needs.pitcherSlotsFull
+
+  if (p.type === 'P') {
+    // Must match an open pitcher slot's eligible positions exactly
+    return needs.openSlots.some(s =>
+      ['RP','P','BN'].includes(s.label) &&
+      ROSTER_SLOTS.find(r => r.label === s.label)?.slotPos.some(pos => positions.includes(pos))
+    )
+  }
+
+  // Hitters: dedicated slot or UTIL
   const hasOpenDedicated = positions.some(pos =>
     needs.positionsStillNeeded.has(pos) && ['C','1B','2B','3B','SS','OF'].includes(pos)
   )
@@ -176,7 +193,7 @@ function getRecommendations(
   const recs: { player: ScoredPlayer; priority: 'high'|'med'|'low'; score: number; tags: string[] }[] = []
 
   const openHitterSlots  = needs.openSlots.filter(s => ['C','1B','2B','3B','SS','OF','UT'].includes(s.label)).length
-  const openPitcherSlots = needs.openSlots.filter(s => ['SP/RP','RP','P','BN'].includes(s.label)).length
+  const openPitcherSlots = needs.openSlots.filter(s => ['RP','P','BN'].includes(s.label)).length
   const hitterUrgency    = openHitterSlots > openPitcherSlots
   const pitcherUrgency   = openPitcherSlots > openHitterSlots
 
@@ -194,7 +211,7 @@ function getRecommendations(
     const tags: string[] = []
     const positions = p.position.split('/').map(s => s.trim())
 
-    // ESPN edge — very high edge players suppressed regardless of urgency
+    // ESPN edge
     if (p.edge != null) {
       if (p.edge <= -40) {
         boost += 0.18; tags.push('🎯 ESPN target')
@@ -267,10 +284,25 @@ function getRecommendations(
       if (sb > 0) { boost += sb; tags.push(`⚠️ ${pos} scarce (${scarcity[pos]??0} left)`); if (priority==='low') priority='med' }
     }
 
-    // Watchlist boost — only fires in mid/late rounds
+    // Watchlist boost — urgency-ratio based, scales with how close we are to player's ADP
     if (phase !== 'early') {
-      if (WATCHLIST_HIGH.has(p.id))        { boost += 0.12; tags.push('⭐⭐ Watchlist'); if (priority==='low') priority='med' }
-      else if (WATCHLIST_NORMAL.has(p.id)) { boost += 0.08; tags.push('⭐ Watchlist');   if (priority==='low') priority='med' }
+      const isHigh   = WATCHLIST_HIGH.has(p.id)
+      const isNormal = WATCHLIST_NORMAL.has(p.id)
+      if (isHigh || isNormal) {
+        const espnADP = p.espnRank ?? DEFAULT_ESPN_ADP[p.id] ?? 250
+        // urgencyRatio: 0 = far from ADP, 1.0 = at ADP, >1.0 = overdue
+        const urgencyRatio = Math.min(1.5, draftPick / espnADP)
+
+        const wBoost = isHigh
+          ? 0.06 + (urgencyRatio * 0.18)   // +0.06 far out → +0.33 overdue
+          : 0.04 + (urgencyRatio * 0.14)   // +0.04 far out → +0.25 overdue
+
+        boost += wBoost
+        tags.push(isHigh ? '⭐⭐ Watchlist' : '⭐ Watchlist')
+
+        // Priority capped at 'med' from watchlist alone — requires slot urgency for 'high'
+        if (priority === 'low') priority = 'med'
+      }
     }
 
     // Entry gate — watchlist players always enter in mid/late regardless of boost
