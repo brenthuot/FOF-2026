@@ -3,6 +3,32 @@ import { useState, useMemo } from 'react'
 import type { ScoredPlayer } from '@/lib/types'
 import { TypeBadge, TierBadge, RankBadge, edgeColor, fmt, tierColor } from './PlayerRow'
 
+// ── Watchlist — players to target in later rounds ─────────────────────────
+const WATCHLIST_HIGH = new Set([
+  'maikel-garcia',     // !! 3B sleeper
+  'geraldo-perdomo',   // !! SS sleeper
+])
+
+const WATCHLIST_NORMAL = new Set([
+  'kyle-stowers',
+  'emmet-sheehan',
+  'jarren-duran',
+  'jonathan-aranda',
+  'sal-stewart',
+  'addison-barger',
+  'trevor-rogers',
+  'bubba-chandler',
+  'agust-n-ram-rez',
+  'alejandro-kirk',
+  'cam-schlittler',
+  'brice-turang',
+  'max-muncy',
+  'andrew-vaughn',
+  'jac-caglianone',
+  'jacob-misiorowski',
+  'brendan-donovan',
+])
+
 type SortKey = 'rank' | 'blnd' | 'finalScore' | 'espnRank' | 'edge'
 type FilterType = 'ALL' | 'H' | 'P'
 
@@ -72,7 +98,6 @@ export default function DraftBoard({ ranked, onSelect, onToggleDraft, onToggleMy
     <div className="flex flex-col h-full overflow-hidden">
       {/* ── Toolbar ── */}
       <div className="flex-shrink-0 flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-slate-700/50 bg-[#0f1b2d]">
-        {/* Search */}
         <div className="relative">
           <input
             value={search}
@@ -85,7 +110,6 @@ export default function DraftBoard({ ranked, onSelect, onToggleDraft, onToggleMy
           )}
         </div>
 
-        {/* Type filter */}
         <div className="flex rounded overflow-hidden border border-slate-700">
           {(['ALL','H','P'] as FilterType[]).map(t => (
             <button
@@ -100,7 +124,6 @@ export default function DraftBoard({ ranked, onSelect, onToggleDraft, onToggleMy
           ))}
         </div>
 
-        {/* Pos filter */}
         <select
           value={filterPos}
           onChange={e => setFilterPos(e.target.value)}
@@ -109,7 +132,6 @@ export default function DraftBoard({ ranked, onSelect, onToggleDraft, onToggleMy
           {positions.map(p => <option key={p}>{p}</option>)}
         </select>
 
-        {/* Hide drafted */}
         <label className="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer select-none">
           <input
             type="checkbox"
@@ -120,7 +142,6 @@ export default function DraftBoard({ ranked, onSelect, onToggleDraft, onToggleMy
           Hide drafted
         </label>
 
-        {/* Results count */}
         <span className="ml-auto text-xs text-slate-600">
           {filtered.length} / {top300.length} shown
         </span>
@@ -151,19 +172,16 @@ export default function DraftBoard({ ranked, onSelect, onToggleDraft, onToggleMy
               <th className="text-center px-2 py-2 cursor-pointer" onClick={() => toggleSort('edge')}>
                 Edge <SortIcon k="edge" />
               </th>
-              {/* Hitter stats */}
               <th className="text-right px-2 py-2 text-emerald-700">R</th>
               <th className="text-right px-2 py-2 text-emerald-700">HR</th>
               <th className="text-right px-2 py-2 text-emerald-700">RBI</th>
               <th className="text-right px-2 py-2 text-emerald-700">SB</th>
               <th className="text-right px-2 py-2 text-emerald-700">OPS</th>
-              {/* Pitcher stats */}
               <th className="text-right px-2 py-2 text-red-700">K</th>
               <th className="text-right px-2 py-2 text-red-700">QS</th>
               <th className="text-right px-2 py-2 text-red-700">ERA</th>
               <th className="text-right px-2 py-2 text-red-700">WHIP</th>
               <th className="text-right px-2 py-2 text-red-700">SV</th>
-              {/* Draft */}
               <th className="text-center px-2 py-2 w-16">M / D</th>
             </tr>
           </thead>
@@ -171,6 +189,8 @@ export default function DraftBoard({ ranked, onSelect, onToggleDraft, onToggleMy
             {filtered.map((p, i) => {
               const isDrafted = p.drafted
               const isNewTier = i > 0 && filtered[i-1].tier !== p.tier
+              const isWatchHigh   = WATCHLIST_HIGH.has(p.id)
+              const isWatchNormal = WATCHLIST_NORMAL.has(p.id)
               return (
                 <>
                   {isNewTier && (
@@ -185,55 +205,50 @@ export default function DraftBoard({ ranked, onSelect, onToggleDraft, onToggleMy
                     onClick={() => onSelect(p)}
                     className={`cursor-pointer transition-colors border-b border-slate-800/50
                       ${isDrafted ? 'opacity-30' : 'hover:bg-slate-800/40'}
+                      ${isWatchHigh && !isDrafted ? 'bg-yellow-950/20' : ''}
+                      ${isWatchNormal && !isDrafted ? 'bg-blue-950/10' : ''}
                     `}
                   >
-                    {/* Rank */}
                     <td className="px-3 py-2">
                       <RankBadge rank={p.rank} tier={p.tier} />
                     </td>
-                    {/* Name + type badge */}
+                    {/* Name + type badge + watchlist flag */}
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-1.5">
                         <TypeBadge type={p.type} />
                         <span className={`font-medium ${isDrafted ? 'line-through text-slate-600' : 'text-white'}`}>
                           {p.name}
                         </span>
+                        {isWatchHigh && !isDrafted && (
+                          <span className="text-[9px] bg-yellow-500/20 text-yellow-300 border border-yellow-600/50 px-1 py-0.5 rounded font-bold">⭐⭐</span>
+                        )}
+                        {isWatchNormal && !isDrafted && (
+                          <span className="text-[9px] bg-blue-500/20 text-blue-300 border border-blue-600/50 px-1 py-0.5 rounded">⭐</span>
+                        )}
                       </div>
                     </td>
-                    {/* Position */}
                     <td className="px-2 py-2 text-center text-slate-400">{p.position}</td>
-                    {/* Team */}
                     <td className="px-2 py-2 text-center text-slate-500">{p.team}</td>
-                    {/* Type letter */}
                     <td className="px-2 py-2 text-center text-slate-600">{p.type}</td>
-                    {/* BLND */}
                     <td className="px-2 py-2 text-right font-mono text-slate-300">{p.blnd.toFixed(1)}</td>
-                    {/* Score */}
                     <td className="px-2 py-2 text-right font-mono text-blue-300 font-semibold">{p.finalScore.toFixed(3)}</td>
-                    {/* Tier */}
                     <td className="px-2 py-2 text-center"><TierBadge tier={p.tier} /></td>
-                    {/* ESPN */}
                     <td className="px-2 py-2 text-center text-slate-500 font-mono">{p.espnRank ?? '—'}</td>
-                    {/* Edge */}
                     <td className={`px-2 py-2 text-center font-mono ${edgeColor(p.edge)}`}>
                       {p.edge != null ? (p.edge > 0 ? `+${p.edge}` : p.edge) : '—'}
                     </td>
-                    {/* Hitter stats */}
                     <td className="px-2 py-2 text-right text-slate-500 font-mono">{fmt(p.stats.r)}</td>
                     <td className="px-2 py-2 text-right text-slate-500 font-mono">{fmt(p.stats.hr)}</td>
                     <td className="px-2 py-2 text-right text-slate-500 font-mono">{fmt(p.stats.rbi)}</td>
                     <td className="px-2 py-2 text-right text-slate-500 font-mono">{fmt(p.stats.sb)}</td>
                     <td className="px-2 py-2 text-right text-slate-500 font-mono">{fmt(p.stats.ops, 3)}</td>
-                    {/* Pitcher stats */}
                     <td className="px-2 py-2 text-right text-slate-500 font-mono">{fmt(p.stats.k)}</td>
                     <td className="px-2 py-2 text-right text-slate-500 font-mono">{fmt(p.stats.qs)}</td>
                     <td className="px-2 py-2 text-right text-slate-500 font-mono">{fmt(p.stats.era, 2)}</td>
                     <td className="px-2 py-2 text-right text-slate-500 font-mono">{fmt(p.stats.whip, 2)}</td>
                     <td className="px-2 py-2 text-right text-slate-500 font-mono">{fmt(p.stats.sv)}</td>
-                    {/* Two action buttons */}
                     <td className="px-2 py-2 text-center" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center gap-1 justify-center">
-                        {/* My pick (blue) */}
                         <button
                           onClick={() => onToggleMyRoster(p.id)}
                           title="Add to my team"
@@ -243,7 +258,6 @@ export default function DraftBoard({ ranked, onSelect, onToggleDraft, onToggleMy
                               : 'border-blue-700 text-blue-700 hover:bg-blue-500 hover:border-blue-400 hover:text-white'
                           }`}
                         >M</button>
-                        {/* Drafted off board (amber) */}
                         <button
                           onClick={() => onToggleDraft(p.id)}
                           title="Mark as drafted (off board)"
