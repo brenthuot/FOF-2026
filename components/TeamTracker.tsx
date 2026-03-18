@@ -198,7 +198,7 @@ function getRecommendations(
   const pitcherUrgency   = openPitcherSlots > openHitterSlots
 
   // Always include watchlist players even if ranked beyond top 300
-  const ALL_WATCHLIST = new Set([...WATCHLIST_HIGH, ...WATCHLIST_NORMAL])
+  const ALL_WATCHLIST = new Set([...Array.from(WATCHLIST_HIGH), ...Array.from(WATCHLIST_NORMAL)])
   const top300 = available.slice(0, 300)
   const watchlistExtras = available.slice(300).filter(p => ALL_WATCHLIST.has(p.id))
   const scanPool = [...top300, ...watchlistExtras]
