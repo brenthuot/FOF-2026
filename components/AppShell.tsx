@@ -177,7 +177,7 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
               <div className="flex items-center gap-1.5 bg-blue-900/40 border border-blue-800 rounded px-2 py-1 text-xs text-blue-300 flex-shrink-0">
                 <span className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0" />
                 <span className="font-mono font-semibold">{myRosterCount}</span>
-                <span className="hidden md:inline text-blue-400">my picks</span>
+                <span className="hidden lg:inline text-blue-400">my picks</span>
               </div>
             )}
 
@@ -185,20 +185,20 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
               <div className="flex items-center gap-1.5 bg-slate-800/80 border border-slate-700 rounded px-2 py-1 text-xs text-slate-400 flex-shrink-0">
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
                 <span className="font-mono">{draftedIds.size - myRosterIds.size}</span>
-                <span className="hidden md:inline">off board</span>
+                <span className="hidden lg:inline">off board</span>
               </div>
             )}
 
             {/* Manual pick counter adjustment */}
-            <div className="flex items-center gap-1 bg-slate-800/80 border border-slate-700 rounded px-1 py-1 flex-shrink-0" title="Manually adjust pick counter">
+            <div className="flex items-center gap-0.5 bg-slate-800/80 border border-slate-700 rounded px-1 py-0.5 flex-shrink-0" title="Adjust pick counter">
               <button
                 onClick={() => setPickOffset(o => o - 1)}
-                className="w-5 h-5 text-slate-400 hover:text-white hover:bg-slate-700 rounded text-xs font-bold transition-colors flex items-center justify-center"
+                className="w-4 h-4 text-slate-400 hover:text-white hover:bg-slate-700 rounded text-[10px] font-bold transition-colors flex items-center justify-center"
               >−</button>
-              <span className="text-[10px] text-slate-300 font-mono px-1 font-semibold">#{draftPick}</span>
+              <span className="text-[9px] text-slate-300 font-mono font-semibold">#{ draftPick}</span>
               <button
                 onClick={() => setPickOffset(o => o + 1)}
-                className="w-5 h-5 text-slate-400 hover:text-white hover:bg-slate-700 rounded text-xs font-bold transition-colors flex items-center justify-center"
+                className="w-4 h-4 text-slate-400 hover:text-white hover:bg-slate-700 rounded text-[10px] font-bold transition-colors flex items-center justify-center"
               >+</button>
             </div>
 
