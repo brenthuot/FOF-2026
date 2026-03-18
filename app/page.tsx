@@ -2,9 +2,8 @@ import AppShell from '@/components/AppShell'
 import playersData from '@/data/players.json'
 import type { RawPlayer, DataMeta } from '@/lib/types'
 
-// All 18 keepers drafted by other teams — always off the board
-// Vinnie Pasquantino and Cristopher Sánchez are Team Huot keepers
-// and are initialized directly in AppShell's myRosterIds
+// Other teams' keepers — always off the board from pick 1
+// Includes Team Huot keepers so draftedCount is never inflated
 const PRE_DRAFTED_IDS = [
   'pete-alonso',
   'roman-anthony',
@@ -24,7 +23,7 @@ const PRE_DRAFTED_IDS = [
   'jeremy-pe-a',
   'julio-rodr-guez',
   'george-kirby',
-  // Team Huot keepers — also in myRosterIds
+  // Team Huot keepers (also pre-loaded into myRosterIds)
   'vinnie-pasquantino',
   'cristopher-s-nchez',
 ]
