@@ -31,26 +31,21 @@ interface Props {
 }
 
 export default function AppShell({ players, meta, preDraftedIds }: Props) {
-  const [settings, setSettings]             = useState<ModelSettings>(DEFAULT_SETTINGS)
-  const [activeTab, setActiveTab]           = useState<Tab>('draft')
-  const [selectedPlayer, setSelectedPlayer] = useState<ScoredPlayer | null>(null)
-  const [controlsOpen, setControlsOpen]     = useState(true)
-  const [showImport, setShowImport]         = useState(false)
+  const [settings, setSettings]               = useState<ModelSettings>(DEFAULT_SETTINGS)
+  const [activeTab, setActiveTab]             = useState<Tab>('draft')
+  const [selectedPlayer, setSelectedPlayer]   = useState<ScoredPlayer | null>(null)
+  const [controlsOpen, setControlsOpen]       = useState(true)
+  const [showImport, setShowImport]           = useState(false)
+  const [keeperPickCount, setKeeperPickCount] = useState(0)
+  const [pickOffset, setPickOffset]           = useState(0)
 
-  // All 20 keepers pre-marked — never available, never recommended
   const [draftedIds, setDraftedIds] = useState<Set<string>>(
     () => new Set(preDraftedIds)
   )
 
-  // My roster pre-loaded with Team Huot keepers
   const [myRosterIds, setMyRosterIds] = useState<Set<string>>(
     () => new Set(MY_KEEPER_IDS)
   )
-
-  // Tracks how many pre-drafted keepers have been "imported" in rounds
-  // Each time a round import contains a pre-drafted player (other team's keeper),
-  // that pick was real but didn't grow draftedIds — so we count it separately
-  const [keeperPickCount, setKeeperPickCount] = useState(0)
 
   const ranked = useMemo(
     () => computeRankings(players, meta, settings, draftedIds),
@@ -59,8 +54,6 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
 
   const diagnostics = useMemo(() => computeDiagnostics(ranked), [ranked])
 
-  // Accurate live pick count:
-  // (draftedIds - all 20 pre-loaded keepers) + keepers that have shown up in imports
   const draftedCount  = draftedIds.size - preDraftedIds.length + keeperPickCount + pickOffset
   const myRosterCount = myRosterIds.size
   const draftPick     = draftedCount + 1
@@ -99,8 +92,6 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
   }, [])
 
   const handleImport = useCallback((draftedList: string[], myPickList: string[]) => {
-    // Count how many players in this import were already pre-drafted (other teams' keepers)
-    // These picks are real but won't grow draftedIds, so track them separately
     const keepersInThisRound = draftedList.filter(id =>
       preDraftedIds.includes(id) && !MY_KEEPER_IDS.includes(id)
     ).length
@@ -124,6 +115,7 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
     setDraftedIds(new Set(preDraftedIds))
     setMyRosterIds(new Set(MY_KEEPER_IDS))
     setKeeperPickCount(0)
+    setPickOffset(0)
     setSelectedPlayer(null)
   }, [preDraftedIds])
 
@@ -170,6 +162,7 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
           </nav>
 
           <div className="flex items-center gap-2 ml-auto">
+
             <button onClick={() => setShowImport(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-emerald-700 hover:bg-emerald-600 text-white transition-colors flex-shrink-0">
               📥 <span className="hidden sm:inline">Import Round</span>
@@ -195,6 +188,20 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
                 <span className="hidden md:inline">off board</span>
               </div>
             )}
+
+            {/* Manual pick counter adjustment */}
+            <div className="flex items-center gap-1 bg-slate-800/80 border border-slate-700 rounded px-1 py-1 flex-shrink-0" title="Manually adjust pick counter">
+              <button
+                onClick={() => setPickOffset(o => o - 1)}
+                className="w-5 h-5 text-slate-400 hover:text-white hover:bg-slate-700 rounded text-xs font-bold transition-colors flex items-center justify-center"
+              >−</button>
+              <span className="text-[10px] text-slate-300 font-mono px-1 font-semibold">#{draftPick}</span>
+              <button
+                onClick={() => setPickOffset(o => o + 1)}
+                className="w-5 h-5 text-slate-400 hover:text-white hover:bg-slate-700 rounded text-xs font-bold transition-colors flex items-center justify-center"
+              >+</button>
+            </div>
+
           </div>
         </header>
 
@@ -233,6 +240,7 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
         <DraftImport players={ranked} onImport={handleImport}
           onClose={() => setShowImport(false)} totalDrafted={draftedCount} />
       )}
+
     </div>
   )
 }
