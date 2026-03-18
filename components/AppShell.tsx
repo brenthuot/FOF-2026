@@ -12,7 +12,6 @@ import PlayerDrawer from './PlayerDrawer'
 import TeamTracker from './TeamTracker'
 import DraftImport from './DraftImport'
 
-// Team Huot keepers — pre-loaded into roster, excluded from draftedCount
 const MY_KEEPER_IDS = ['vinnie-pasquantino', 'cristopher-s-nchez']
 
 type Tab = 'draft' | 'team' | 'pool' | 'diagnostics' | 'edges'
@@ -38,16 +37,20 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
   const [controlsOpen, setControlsOpen]     = useState(true)
   const [showImport, setShowImport]         = useState(false)
 
-  // All 20 keepers pre-marked drafted so they're gray on board from pick 1
+  // All 20 keepers pre-marked — never available, never recommended
   const [draftedIds, setDraftedIds] = useState<Set<string>>(
     () => new Set(preDraftedIds)
   )
 
   // My roster pre-loaded with Team Huot keepers
-  // so Vinnie + Sánchez appear without inflating draftedCount
   const [myRosterIds, setMyRosterIds] = useState<Set<string>>(
     () => new Set(MY_KEEPER_IDS)
   )
+
+  // Tracks how many pre-drafted keepers have been "imported" in rounds
+  // Each time a round import contains a pre-drafted player (other team's keeper),
+  // that pick was real but didn't grow draftedIds — so we count it separately
+  const [keeperPickCount, setKeeperPickCount] = useState(0)
 
   const ranked = useMemo(
     () => computeRankings(players, meta, settings, draftedIds),
@@ -56,8 +59,9 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
 
   const diagnostics = useMemo(() => computeDiagnostics(ranked), [ranked])
 
-  // Excludes all 20 pre-drafted keepers — reflects live picks only
-  const draftedCount  = draftedIds.size - preDraftedIds.length
+  // Accurate live pick count:
+  // (draftedIds - all 20 pre-loaded keepers) + keepers that have shown up in imports
+  const draftedCount  = draftedIds.size - preDraftedIds.length + keeperPickCount
   const myRosterCount = myRosterIds.size
   const draftPick     = draftedCount + 1
 
@@ -66,7 +70,6 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
     [ranked, myRosterIds],
   )
 
-  // Mark D — other team's pick, off board
   const toggleDrafted = useCallback((id: string) => {
     setDraftedIds(prev => {
       if (preDraftedIds.includes(id) && prev.has(id)) return prev
@@ -76,7 +79,6 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
     })
   }, [preDraftedIds])
 
-  // Mark M — my pick, adds to roster
   const toggleMyRoster = useCallback((id: string) => {
     setMyRosterIds(prev => {
       const next = new Set(prev)
@@ -96,8 +98,14 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
     })
   }, [])
 
-  // FantasyPros round import
   const handleImport = useCallback((draftedList: string[], myPickList: string[]) => {
+    // Count how many players in this import were already pre-drafted (other teams' keepers)
+    // These picks are real but won't grow draftedIds, so track them separately
+    const keepersInThisRound = draftedList.filter(id =>
+      preDraftedIds.includes(id) && !MY_KEEPER_IDS.includes(id)
+    ).length
+    setKeeperPickCount(prev => prev + keepersInThisRound)
+
     setDraftedIds(prev => {
       const next = new Set(prev)
       draftedList.forEach(id => next.add(id))
@@ -109,37 +117,30 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
       myPickList.forEach(id => next.add(id))
       return next
     })
-  }, [])
+  }, [preDraftedIds])
 
-  // Reset — clears live picks, restores keepers
   const handleReset = useCallback(() => {
     if (!confirm('Reset draft? All imported picks will be cleared. Keepers will remain.')) return
     setDraftedIds(new Set(preDraftedIds))
     setMyRosterIds(new Set(MY_KEEPER_IDS))
+    setKeeperPickCount(0)
     setSelectedPlayer(null)
   }, [preDraftedIds])
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#0a1628]">
 
-      {/* Controls sidebar */}
       <aside className={`flex-shrink-0 border-r border-slate-700/50 bg-[#0f1b2d] overflow-y-auto transition-all duration-200 ${
         controlsOpen ? 'w-72' : 'w-0 border-none overflow-hidden'
       }`}>
         <ControlsPanel settings={settings} onChange={setSettings} diagnostics={diagnostics} />
       </aside>
 
-      {/* Main */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-
-        {/* Header */}
         <header className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-slate-700/50 bg-[#0f1b2d]">
 
-          <button
-            onClick={() => setControlsOpen(o => !o)}
-            className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-white transition-colors flex-shrink-0"
-            title="Toggle controls"
-          >
+          <button onClick={() => setControlsOpen(o => !o)}
+            className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-white transition-colors flex-shrink-0">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16"/>
             </svg>
@@ -153,15 +154,10 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
 
           <nav className="flex gap-0.5">
             {TABS.map(t => (
-              <button
-                key={t.id}
-                onClick={() => setActiveTab(t.id)}
+              <button key={t.id} onClick={() => setActiveTab(t.id)}
                 className={`px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1 ${
-                  activeTab === t.id
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-700'
-                }`}
-              >
+                  activeTab === t.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                }`}>
                 <span>{t.icon}</span>
                 <span className="hidden sm:inline">{t.label}</span>
                 {t.id === 'team' && myRosterCount > 0 && (
@@ -174,19 +170,13 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
           </nav>
 
           <div className="flex items-center gap-2 ml-auto">
-
-            <button
-              onClick={() => setShowImport(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-emerald-700 hover:bg-emerald-600 text-white transition-colors flex-shrink-0"
-            >
+            <button onClick={() => setShowImport(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-emerald-700 hover:bg-emerald-600 text-white transition-colors flex-shrink-0">
               📥 <span className="hidden sm:inline">Import Round</span>
             </button>
 
-            <button
-              onClick={handleReset}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-slate-700 hover:bg-red-900/60 text-slate-300 hover:text-red-300 border border-slate-600 transition-colors flex-shrink-0"
-              title="Reset all picks (keepers remain)"
-            >
+            <button onClick={handleReset}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-slate-700 hover:bg-red-900/60 text-slate-300 hover:text-red-300 border border-slate-600 transition-colors flex-shrink-0">
               ↺ <span className="hidden sm:inline">Reset Draft</span>
             </button>
 
@@ -205,41 +195,23 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
                 <span className="hidden md:inline">off board</span>
               </div>
             )}
-
           </div>
         </header>
 
-        {/* Content */}
         <main className="flex-1 overflow-hidden">
           {activeTab === 'draft' && (
-            <DraftBoard
-              ranked={ranked}
-              onSelect={setSelectedPlayer}
-              onToggleDraft={toggleDrafted}
-              onToggleMyRoster={toggleMyRoster}
-              draftedIds={draftedIds}
-              myRosterIds={myRosterIds}
-              draftPick={draftPick}
-            />
+            <DraftBoard ranked={ranked} onSelect={setSelectedPlayer}
+              onToggleDraft={toggleDrafted} onToggleMyRoster={toggleMyRoster}
+              draftedIds={draftedIds} myRosterIds={myRosterIds} draftPick={draftPick} />
           )}
           {activeTab === 'team' && (
-            <TeamTracker
-              myTeam={myTeam}
-              ranked={ranked}
-              onSelect={setSelectedPlayer}
-              onToggleMyRoster={toggleMyRoster}
-              draftPick={draftPick}
-            />
+            <TeamTracker myTeam={myTeam} ranked={ranked} onSelect={setSelectedPlayer}
+              onToggleMyRoster={toggleMyRoster} draftPick={draftPick} />
           )}
           {activeTab === 'pool' && (
-            <FullPool
-              ranked={ranked}
-              onSelect={setSelectedPlayer}
-              onToggleDraft={toggleDrafted}
-              onToggleMyRoster={toggleMyRoster}
-              draftedIds={draftedIds}
-              myRosterIds={myRosterIds}
-            />
+            <FullPool ranked={ranked} onSelect={setSelectedPlayer}
+              onToggleDraft={toggleDrafted} onToggleMyRoster={toggleMyRoster}
+              draftedIds={draftedIds} myRosterIds={myRosterIds} />
           )}
           {activeTab === 'diagnostics' && (
             <DiagnosticsView diagnostics={diagnostics} settings={settings} ranked={ranked} />
@@ -250,28 +222,17 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
         </main>
       </div>
 
-      {/* Player drawer */}
       {selectedPlayer && (
-        <PlayerDrawer
-          player={selectedPlayer}
-          settings={settings}
+        <PlayerDrawer player={selectedPlayer} settings={settings}
           onClose={() => setSelectedPlayer(null)}
-          onToggleDraft={toggleDrafted}
-          onToggleMyRoster={toggleMyRoster}
-          myRosterIds={myRosterIds}
-        />
+          onToggleDraft={toggleDrafted} onToggleMyRoster={toggleMyRoster}
+          myRosterIds={myRosterIds} />
       )}
 
-      {/* Import modal — original DraftImport component */}
       {showImport && (
-        <DraftImport
-          players={ranked}
-          onImport={handleImport}
-          onClose={() => setShowImport(false)}
-          totalDrafted={draftedCount}
-        />
+        <DraftImport players={ranked} onImport={handleImport}
+          onClose={() => setShowImport(false)} totalDrafted={draftedCount} />
       )}
-
     </div>
   )
 }
