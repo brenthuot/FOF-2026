@@ -557,3 +557,87 @@ export default function TeamTracker({ myTeam, ranked, onSelect, onToggleMyRoster
                           <span key={ti} className="text-[9px] bg-slate-800 text-slate-400 border border-slate-700 px-1 py-0.5 rounded">{t}</span>
                         ))}
                         {visibleTags.length === 0 && (
+                          <span className="text-[9px] bg-slate-800 text-slate-500 border border-slate-700 px-1 py-0.5 rounded">
+                            📊 Model pick #{p.rank}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-xs font-mono text-blue-300 font-bold">#{p.rank}</div>
+                      <div className={`text-[10px] font-mono ${edgeColor(p.edge)}`}>{p.edge!=null?(p.edge>0?`+${p.edge}`:p.edge):'—'} edge</div>
+                      <div className="text-[9px] text-slate-600 mt-0.5">BLND {p.blnd.toFixed(1)}</div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+
+          {(needs.weakBatCats.length > 0 || needs.weakPitCats.length > 0) && (
+            <section>
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-2">Category Needs</h2>
+              <div className="flex flex-wrap gap-1.5">
+                {needs.weakBatCats.map(cat => <span key={cat} className="text-xs px-2 py-1 rounded border bg-emerald-900/30 text-emerald-300 border-emerald-800">⬇ {cat}</span>)}
+                {needs.weakPitCats.map(cat => <span key={cat} className="text-xs px-2 py-1 rounded border bg-red-900/30 text-red-300 border-red-800">⬇ {cat}</span>)}
+              </div>
+            </section>
+          )}
+
+          <section className="grid grid-cols-2 gap-4">
+            <div className="bg-slate-800/30 rounded-lg p-3 space-y-2">
+              <div className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wide mb-2">Batting</div>
+              <CatBar label="Runs" value={batTotals.R}   maxVal={750} />
+              <CatBar label="HR"   value={batTotals.HR}  maxVal={300} threshold={160} />
+              <CatBar label="RBI"  value={batTotals.RBI} maxVal={700} threshold={500} />
+              <CatBar label="SB"   value={batTotals.SB}  maxVal={175} threshold={80} />
+              <CatBar label="OPS"  value={batTotals.OPS} maxVal={1.0} threshold={0.820} />
+            </div>
+            <div className="bg-slate-800/30 rounded-lg p-3 space-y-2">
+              <div className="text-[10px] font-semibold text-red-600 uppercase tracking-wide mb-2">Pitching</div>
+              <CatBar label="K"    value={pitTotals.K}    maxVal={2000} />
+              <CatBar label="QS"   value={pitTotals.QS}   maxVal={180}  threshold={50} />
+              <CatBar label="SV"   value={pitTotals.SV}   maxVal={100}  threshold={30} />
+              <CatBar label="ERA"  value={pitTotals.ERA}  maxVal={5.5}  threshold={3.80} lowerBetter />
+              <CatBar label="WHIP" value={pitTotals.WHIP} maxVal={1.6}  threshold={1.22} lowerBetter />
+            </div>
+          </section>
+
+          <BarLegend />
+
+          <section>
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">Roster ({myTeam.length}/21)</h2>
+            <div className="space-y-0.5">
+              {assignedSlots.map((slot, i) => (
+                <div key={i} className={`flex items-center gap-2 px-2 py-1.5 rounded ${slot.player ? 'hover:bg-slate-800/40' : 'opacity-40'}`}>
+                  <span className={`text-[10px] font-bold w-8 text-right flex-shrink-0 ${slotLabelColor(slot.label)}`}>
+                    {slot.label}
+                  </span>
+                  <div className="w-px h-4 bg-slate-700 flex-shrink-0" />
+                  {slot.player ? (
+                    <div className="flex-1 flex items-center gap-2 cursor-pointer" onClick={() => onSelect(slot.player!)}>
+                      <TypeBadge type={slot.player.type} />
+                      <span className="text-white text-xs font-medium flex-1">{slot.player.name}</span>
+                      <span className="text-slate-500 text-[10px]">{slot.player.position}</span>
+                      <span className="text-slate-600 text-[10px] font-mono">{slot.player.team}</span>
+                      <span className="text-blue-400 font-mono text-[10px]">#{slot.player.rank}</span>
+                      {slot.player.edge != null && slot.player.edge >= 20 && (
+                        <span className="text-[9px] text-emerald-500">+{slot.player.edge}</span>
+                      )}
+                      <button
+                        onClick={e => { e.stopPropagation(); onToggleMyRoster(slot.player!.id) }}
+                        className="text-slate-600 hover:text-red-400 transition-colors text-xs px-1 ml-1"
+                        title="Remove">✕</button>
+                    </div>
+                  ) : (
+                    <span className="text-slate-700 text-xs italic">— empty —</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        </>
+      )}
+    </div>
+  )
+}
