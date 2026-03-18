@@ -22,6 +22,9 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'edges',       label: 'ESPN Edges',  icon: '📊' },
 ]
 
+// Team Huot keepers — pre-loaded into roster from the start
+const MY_KEEPER_IDS = ['vinnie-pasquantino', 'cristopher-s-nchez']
+
 interface Props {
   players: RawPlayer[]
   meta: DataMeta
@@ -35,10 +38,17 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
   const [controlsOpen, setControlsOpen]     = useState(true)
   const [showImport, setShowImport]         = useState(false)
 
+  // preDraftedIds includes all 20 keepers (18 others + 2 mine)
+  // so they're all grayed out on the board from the start
   const [draftedIds, setDraftedIds] = useState<Set<string>>(
     () => new Set(preDraftedIds)
   )
-  const [myRosterIds, setMyRosterIds] = useState<Set<string>>(new Set())
+
+  // myRosterIds pre-loaded with Team Huot keepers
+  // so Vinnie (R9) and Sánchez (R12) appear in roster without inflating draftedCount
+  const [myRosterIds, setMyRosterIds] = useState<Set<string>>(
+    () => new Set(MY_KEEPER_IDS)
+  )
 
   const ranked = useMemo(
     () => computeRankings(players, meta, settings, draftedIds),
@@ -59,6 +69,8 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
     setMyRosterIds(prev => {
       const next = new Set(prev)
       if (next.has(id)) {
+        // Don't allow removing keepers
+        if (MY_KEEPER_IDS.includes(id)) return next
         next.delete(id)
       } else {
         next.add(id)
@@ -83,14 +95,15 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
   }, [])
 
   const handleReset = useCallback(() => {
-    if (confirm('Reset draft? Clears your roster and all imported picks. Pre-drafted players stay off the board.')) {
+    if (confirm('Reset draft? Clears all imported picks. Pre-drafted keepers stay off the board and your keepers stay on your roster.')) {
       setDraftedIds(new Set(preDraftedIds))
-      setMyRosterIds(new Set())
+      setMyRosterIds(new Set(MY_KEEPER_IDS))
       setSelectedPlayer(null)
     }
   }, [preDraftedIds])
 
-  // draftedCount excludes the pre-drafted keepers — reflects actual picks made in the live draft
+  // draftedCount excludes ALL pre-drafted keepers (including mine)
+  // so it only reflects actual live draft picks — used for draftPick and phase detection
   const draftedCount  = draftedIds.size - preDraftedIds.length
   const myRosterCount = myRosterIds.size
   const myTeam = useMemo(() => ranked.filter(p => myRosterIds.has(p.id)), [ranked, myRosterIds])
