@@ -13,7 +13,7 @@ const WATCHLIST_NORMAL = new Set([
   'sal-stewart', 'addison-barger', 'trevor-rogers', 'bubba-chandler',
   'agust-n-ram-rez', 'alejandro-kirk', 'cam-schlittler', 'brice-turang',
   'max-muncy', 'andrew-vaughn', 'jac-caglianone', 'jacob-misiorowski',
-  'brendan-donovan',
+  'brendan-donovan', 'konnor-griffin', 'kevin-mcgonigle',
 ])
 
 const DISPLAY_SLOTS: { label: string; slotPos: string[]; type: 'H'|'P'|'ANY'; count: number }[] = [
@@ -180,7 +180,13 @@ function getRecommendations(
   const hitterUrgency    = openHitterSlots > openPitcherSlots
   const pitcherUrgency   = openPitcherSlots > openHitterSlots
 
-  for (const p of available.slice(0, 300)) {
+  // Always include watchlist players even if ranked beyond top 300
+  const ALL_WATCHLIST = new Set([...WATCHLIST_HIGH, ...WATCHLIST_NORMAL])
+  const top300 = available.slice(0, 300)
+  const watchlistExtras = available.slice(300).filter(p => ALL_WATCHLIST.has(p.id))
+  const scanPool = [...top300, ...watchlistExtras]
+
+  for (const p of scanPool) {
     if (!playerCanFit(p, needs)) continue
 
     let priority: 'high'|'med'|'low' = 'low'
@@ -267,8 +273,14 @@ function getRecommendations(
       else if (WATCHLIST_NORMAL.has(p.id)) { boost += 0.08; tags.push('⭐ Watchlist');   if (priority==='low') priority='med' }
     }
 
-    // Entry gate
-    if (boost > 0.04 || (p.rank <= 30 && phase === 'early') || (p.rank <= 15 && phase !== 'late')) {
+    // Entry gate — watchlist players always enter in mid/late regardless of boost
+    const isWatchlist = ALL_WATCHLIST.has(p.id)
+    if (
+      boost > 0.04 ||
+      (isWatchlist && phase !== 'early') ||
+      (p.rank <= 30 && phase === 'early') ||
+      (p.rank <= 15 && phase !== 'late')
+    ) {
       recs.push({ player: p, priority, score: p.finalScore + boost, tags })
     }
   }
