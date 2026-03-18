@@ -3,6 +3,19 @@ import { useMemo, useState } from 'react'
 import type { ScoredPlayer } from '@/lib/types'
 import { TypeBadge, edgeColor } from './PlayerRow'
 
+// ── Watchlist — late-round targets ────────────────────────────────────────
+const WATCHLIST_HIGH = new Set([
+  'maikel-garcia',
+  'geraldo-perdomo',
+])
+const WATCHLIST_NORMAL = new Set([
+  'kyle-stowers', 'emmet-sheehan', 'jarren-duran', 'jonathan-aranda',
+  'sal-stewart', 'addison-barger', 'trevor-rogers', 'bubba-chandler',
+  'agust-n-ram-rez', 'alejandro-kirk', 'cam-schlittler', 'brice-turang',
+  'max-muncy', 'andrew-vaughn', 'jac-caglianone', 'jacob-misiorowski',
+  'brendan-donovan',
+])
+
 const DISPLAY_SLOTS: { label: string; slotPos: string[]; type: 'H'|'P'|'ANY'; count: number }[] = [
   { label: 'C',    slotPos: ['C'],                         type: 'H', count: 1 },
   { label: '1B',   slotPos: ['1B'],                        type: 'H', count: 1 },
@@ -198,25 +211,17 @@ function getRecommendations(
     )
     if (fillsUrgent) {
       const slotBoost = phase === 'early' ? 0.15 : phase === 'mid' ? 0.25 : 0.20
-
-      // Dampen if other type is more urgently needed
       const typeDampened = (p.type === 'P' && hitterUrgency) ? slotBoost * 0.3
                          : (p.type === 'H' && pitcherUrgency) ? slotBoost * 0.3
                          : slotBoost
-
-      // Dampen further if ESPN won't take this player for many picks
       const espnBuffer = p.espnRank != null ? p.espnRank - draftPick : 0
       const espnDampened = espnBuffer > 30 ? typeDampened * 0.4
                          : espnBuffer > 15 ? typeDampened * 0.7
                          : typeDampened
-
       boost += espnDampened
-
-      // Priority reflects genuine urgency — if ESPN won't take them for 30 picks, it's not urgent
       if (espnBuffer > 30)      priority = 'low'
       else if (espnBuffer > 15) priority = 'med'
       else                      priority = 'high'
-
       tags.push(`📋 Fills ${positions[0]} slot`)
     }
     if (p.type === 'H' && !fillsUrgent && needs.utilOpen) tags.push('🔀 UT only')
@@ -256,7 +261,13 @@ function getRecommendations(
       if (sb > 0) { boost += sb; tags.push(`⚠️ ${pos} scarce (${scarcity[pos]??0} left)`); if (priority==='low') priority='med' }
     }
 
-    // Entry gate — lowered threshold + elite players always visible in early rounds
+    // Watchlist boost — only fires in mid/late rounds
+    if (phase !== 'early') {
+      if (WATCHLIST_HIGH.has(p.id))        { boost += 0.12; tags.push('⭐⭐ Watchlist'); if (priority==='low') priority='med' }
+      else if (WATCHLIST_NORMAL.has(p.id)) { boost += 0.08; tags.push('⭐ Watchlist');   if (priority==='low') priority='med' }
+    }
+
+    // Entry gate
     if (boost > 0.04 || (p.rank <= 30 && phase === 'early') || (p.rank <= 15 && phase !== 'late')) {
       recs.push({ player: p, priority, score: p.finalScore + boost, tags })
     }
