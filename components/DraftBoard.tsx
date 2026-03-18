@@ -27,6 +27,8 @@ const WATCHLIST_NORMAL = new Set([
   'jac-caglianone',
   'jacob-misiorowski',
   'brendan-donovan',
+  'konnor-griffin',
+  'kevin-mcgonigle',
 ])
 
 type SortKey = 'rank' | 'blnd' | 'finalScore' | 'espnRank' | 'edge'
