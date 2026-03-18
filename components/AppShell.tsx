@@ -61,7 +61,7 @@ export default function AppShell({ players, meta, preDraftedIds }: Props) {
 
   // Accurate live pick count:
   // (draftedIds - all 20 pre-loaded keepers) + keepers that have shown up in imports
-  const draftedCount  = draftedIds.size - preDraftedIds.length + keeperPickCount
+  const draftedCount  = draftedIds.size - preDraftedIds.length + keeperPickCount + pickOffset
   const myRosterCount = myRosterIds.size
   const draftPick     = draftedCount + 1
 
