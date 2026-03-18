@@ -55,7 +55,7 @@ export const DEFAULT_SETTINGS: ModelSettings = {
   pitcherCompression:  0.80,
   replacementOn:       true,
   replacementStrength: 1.0,
-  sbScarcityOn:        true,
+  sbScarcityOn:        false,
   sbStrength:          1.0,
   tierGapThreshold:    0.030,
 }
